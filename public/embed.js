@@ -4,6 +4,7 @@
     (currentScript && currentScript.dataset.apiBase) ||
     (currentScript && new URL(currentScript.src).origin) ||
     window.location.origin;
+
   const storageKey = "mlp-chatbot-session";
   const transcriptKey = "mlp-chatbot-transcript";
   const voiceKey = "mlp-chatbot-voice-enabled";
@@ -20,24 +21,46 @@
     const root = document.createElement("div");
     root.id = "mlp-chatbot-root";
     root.innerHTML = `
-      <button class="mlp-launcher" aria-label="Open chat">
-        <span class="mlp-launcher__icon">Chat</span>
+      <button
+        class="mlp-launcher"
+        aria-label="Open chat"
+        style="background-color:#CC3300;color:white;font-family:Arial Black, Arial, sans-serif;border-radius:25px;border:none;background-image:none;"
+      >
+        <span class="mlp-launcher__icon" style="font-family:Arial Black, Arial, sans-serif;color:white;">Chat</span>
       </button>
+
       <div class="mlp-tooltip" hidden>Have a project in mind? I can help.</div>
+
       <section class="mlp-panel" aria-hidden="true">
         <header class="mlp-header">
-          <button class="mlp-back" aria-label="Close chat">←</button>
+          <button class="mlp-back" aria-label="Close chat">&#8592;</button>
           <div>
             <strong>My Landscaping Project</strong>
-            <div class="mlp-subtitle">Chat with Jason’s assistant</div>
+            <div class="mlp-subtitle">Chat with Jason's assistant</div>
           </div>
-          <button class="mlp-voice" aria-label="Toggle voice">🔊</button>
+          <button class="mlp-voice" aria-label="Toggle voice">&#128266;</button>
         </header>
+
         <div class="mlp-messages"></div>
         <div class="mlp-quick-replies"></div>
+
         <form class="mlp-form">
-          <input id="mlp-input" class="mlp-input" type="text" placeholder="Type your message..." autocomplete="off" />
-          <button type="button" class="mlp-mic" id="mlp-voice-btn" aria-label="Speak message">🎤</button>
+          <input
+            id="mlp-input"
+            class="mlp-input"
+            type="text"
+            placeholder="Type your message..."
+            autocomplete="off"
+          />
+          <button
+            type="button"
+            class="mlp-mic"
+            id="mlp-voice-btn"
+            aria-label="Speak message"
+            title="Speak your message"
+          >
+            <span class="mlp-mic__icon">&#127908;</span>
+          </button>
           <button class="mlp-send" type="submit">Send</button>
         </form>
       </section>
@@ -45,35 +68,6 @@
 
     document.body.appendChild(root);
 
-    const micBtn = root.querySelector("#mlp-voice-btn");
-    const input = root.querySelector("#mlp-input");
-
-  if (micBtn && input && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
-
-  recognition.continuous = false;
-  recognition.interimResults = false;
-  recognition.lang = "en-US";
-
-  micBtn.addEventListener("click", () => {
-    recognition.start();
-    micBtn.textContent = "🎙️";
-  });
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    input.value = transcript;
-  };
-
-  recognition.onend = () => {
-    micBtn.textContent = "🎤";
-  };
-
-  recognition.onerror = () => {
-    micBtn.textContent = "🎤";
-  };
-}
     const launcher = root.querySelector(".mlp-launcher");
     const tooltip = root.querySelector(".mlp-tooltip");
     const panel = root.querySelector(".mlp-panel");
@@ -82,10 +76,12 @@
     const messagesEl = root.querySelector(".mlp-messages");
     const quickRepliesEl = root.querySelector(".mlp-quick-replies");
     const form = root.querySelector(".mlp-form");
-    const input = root.querySelector(".mlp-input");
+    const input = root.querySelector("#mlp-input");
+    const micBtn = root.querySelector("#mlp-voice-btn");
 
     voiceButton.classList.toggle("is-on", state.voiceEnabled);
 
+    setupMic(micBtn, input, form);
     renderMessages(messagesEl);
     renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
 
@@ -97,7 +93,7 @@
     setTimeout(() => {
       if (!state.messages.length) {
         tooltip.hidden = false;
-        tooltip.textContent = "Hey — quick question: are you looking to clean or restore something?";
+        tooltip.textContent = "Hey - quick question: are you looking to clean or restore something?";
       }
     }, 9000);
 
@@ -107,7 +103,7 @@
 
     if (!state.messages.length) {
       const greeting =
-        "Hi — I can help with deck staining, power washing, or talk through a bigger outdoor project and point you to the right next step. What are you looking to take care of?";
+        "Hi - I can help with deck staining, power washing, or talk through a bigger outdoor project and point you to the right next step. What are you looking to take care of?";
       pushMessage("assistant", greeting);
       renderMessages(messagesEl);
     }
@@ -192,7 +188,7 @@
         text.innerHTML = linkify(message.text);
         bubble.appendChild(text);
 
-        if (Array.isArray(message.actions)) {
+        if (Array.isArray(message.actions) && message.actions.length) {
           const actionsWrap = document.createElement("div");
           actionsWrap.className = "mlp-inline-actions";
 
@@ -231,6 +227,67 @@
         container.appendChild(button);
       });
     }
+  }
+
+  function setupMic(micBtn, input, form) {
+    if (!micBtn || !input) {
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      micBtn.style.display = "none";
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    let listening = false;
+
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    micBtn.addEventListener("click", () => {
+      if (listening) {
+        recognition.stop();
+        return;
+      }
+
+      try {
+        recognition.start();
+      } catch (_error) {
+      }
+    });
+
+    recognition.onstart = () => {
+      listening = true;
+      micBtn.classList.add("is-listening");
+    };
+
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i += 1) {
+        transcript += event.results[i][0].transcript;
+      }
+      input.value = transcript.trim();
+    };
+
+    recognition.onend = () => {
+      listening = false;
+      micBtn.classList.remove("is-listening");
+    };
+
+    recognition.onerror = () => {
+      listening = false;
+      micBtn.classList.remove("is-listening");
+    };
+
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        form.requestSubmit();
+      }
+    });
   }
 
   function setTyping(container, show) {
