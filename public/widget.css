@@ -13,6 +13,8 @@
   bottom: 16px;
   z-index: 999999;
   font-family: Verdana, Geneva, sans-serif;
+  width: auto;
+  left: auto;
 }
 
 .mlp-launcher {
@@ -399,13 +401,16 @@
 
 @media (max-width: 680px) {
   #mlp-chatbot-root {
-    right: 12px;
-    bottom: 12px;
-    left: 12px;
+    right: 16px;
+    left: auto;
+    bottom: 16px;
+    width: auto;
   }
 
   .mlp-launcher {
-    margin-left: auto;
+    margin-left: 0;
+    width: 68px;
+    height: 68px;
   }
 
   .mlp-panel {
