@@ -109,9 +109,9 @@
     renderMessages(messagesEl);
     renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
 
-    bindTap(launcher, openChat);
-    bindTap(backButton, closeChat);
-    bindTap(voiceButton, toggleVoice);
+    bindPress(launcher, openChat);
+    bindPress(backButton, closeChat);
+    bindPress(voiceButton, toggleVoice);
 
     form.addEventListener("submit", handleSubmit);
     input.addEventListener("input", autoResizeTextarea);
@@ -283,29 +283,23 @@
     }
   }
 
-  function bindTap(element, handler) {
+  function bindPress(element, handler) {
     if (!element) {
       return;
     }
 
-    let touched = false;
+    let handledPointer = false;
 
-    element.addEventListener(
-      "touchstart",
-      function (event) {
-        touched = true;
-        event.preventDefault();
-        handler(event);
-      },
-      { passive: false }
-    );
+    element.addEventListener("pointerup", function (event) {
+      handledPointer = true;
+      handler(event);
+    });
 
     element.addEventListener("click", function (event) {
-      if (touched) {
-        touched = false;
+      if (handledPointer) {
+        handledPointer = false;
         return;
       }
-      event.preventDefault();
       handler(event);
     });
   }
@@ -339,7 +333,7 @@
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    bindTap(micBtn, () => {
+    bindPress(micBtn, () => {
       if (listening) {
         recognition.stop();
         return;
@@ -355,14 +349,14 @@
       }
     });
 
-    bindTap(cancelRecordingBtn, () => {
+    bindPress(cancelRecordingBtn, () => {
       transcriptText = "";
       recognition.stop();
       overlay.hidden = true;
       preview.textContent = "Start speaking...";
     });
 
-    bindTap(useRecordingBtn, () => {
+    bindPress(useRecordingBtn, () => {
       if (transcriptText.trim()) {
         input.value = transcriptText.trim();
         input.dispatchEvent(new Event("input"));
