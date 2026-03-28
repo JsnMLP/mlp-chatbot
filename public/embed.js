@@ -4,6 +4,7 @@
     (currentScript && currentScript.dataset.apiBase) ||
     (currentScript && new URL(currentScript.src).origin) ||
     window.location.origin;
+
   const storageKey = "mlp-chatbot-session";
   const transcriptKey = "mlp-chatbot-transcript";
   const voiceKey = "mlp-chatbot-voice-enabled";
@@ -23,7 +24,9 @@
       <button class="mlp-launcher" aria-label="Open chat">
         <span class="mlp-launcher__icon">Chat</span>
       </button>
+
       <div class="mlp-tooltip" hidden>Have a project in mind? I can help.</div>
+
       <section class="mlp-panel" aria-hidden="true">
         <header class="mlp-header">
           <button class="mlp-back" aria-label="Close chat">&#8592;</button>
@@ -33,16 +36,45 @@
           </div>
           <button class="mlp-voice" aria-label="Toggle voice">&#128266;</button>
         </header>
+
         <div class="mlp-messages"></div>
         <div class="mlp-quick-replies"></div>
+
         <form class="mlp-form">
-          <input id="mlp-input" class="mlp-input" type="text" placeholder="Type your message..." autocomplete="off" />
-          <button type="button" class="mlp-mic" id="mlp-voice-btn" aria-label="Speak message" title="Speak your message">
+          <textarea
+            id="mlp-input"
+            class="mlp-input"
+            placeholder="Type your message..."
+            rows="3"
+          ></textarea>
+          <button
+            type="button"
+            class="mlp-mic"
+            id="mlp-voice-btn"
+            aria-label="Speak message"
+            title="Speak your message"
+          >
             <span class="mlp-mic__icon">&#127908;</span>
           </button>
           <button class="mlp-send" type="submit">Send</button>
         </form>
       </section>
+
+      <div class="mlp-recording-overlay" hidden>
+        <div class="mlp-recording-card">
+          <div class="mlp-recording-title">See text</div>
+          <div class="mlp-recording-preview">Start speaking...</div>
+          <div class="mlp-recording-bars" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span>
+          </div>
+          <div class="mlp-recording-actions">
+            <button type="button" class="mlp-recording-cancel">Cancel</button>
+            <button type="button" class="mlp-recording-use">Use text</button>
+          </div>
+        </div>
+      </div>
     `;
 
     document.body.appendChild(root);
@@ -57,10 +89,23 @@
     const form = root.querySelector(".mlp-form");
     const input = root.querySelector("#mlp-input");
     const micBtn = root.querySelector("#mlp-voice-btn");
+    const overlay = root.querySelector(".mlp-recording-overlay");
+    const preview = root.querySelector(".mlp-recording-preview");
+    const cancelRecordingBtn = root.querySelector(".mlp-recording-cancel");
+    const useRecordingBtn = root.querySelector(".mlp-recording-use");
 
     voiceButton.classList.toggle("is-on", state.voiceEnabled);
 
-    setupMic(micBtn, input, form);
+    setupMic({
+      micBtn,
+      input,
+      form,
+      overlay,
+      preview,
+      cancelRecordingBtn,
+      useRecordingBtn
+    });
+
     renderMessages(messagesEl);
     renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
 
@@ -68,6 +113,7 @@
     backButton.addEventListener("click", closeChat);
     voiceButton.addEventListener("click", toggleVoice);
     form.addEventListener("submit", handleSubmit);
+    input.addEventListener("input", autoResizeTextarea);
 
     setTimeout(() => {
       if (!state.messages.length) {
@@ -87,11 +133,19 @@
       renderMessages(messagesEl);
     }
 
+    autoResizeTextarea();
+
+    function autoResizeTextarea() {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 140) + "px";
+    }
+
     function openChat() {
       panel.classList.add("is-open");
       panel.setAttribute("aria-hidden", "false");
       tooltip.hidden = true;
       input.focus();
+      autoResizeTextarea();
     }
 
     function closeChat() {
@@ -113,11 +167,21 @@
       }
 
       input.value = "";
+      autoResizeTextarea();
       pushMessage("user", value);
       renderMessages(messagesEl);
-      setTyping(messagesEl, true);
+      setTyping(messagesEl, "thinking...");
+
+      let longWaitTimer = null;
 
       try {
+        longWaitTimer = setTimeout(() => {
+          setTyping(messagesEl, "Still working on it...");
+        }, 8000);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 65000);
+
         const response = await fetch(`${apiBase}/api/chat`, {
           method: "POST",
           headers: {
@@ -128,8 +192,16 @@
             message: value,
             pageUrl: window.location.href,
             pageTitle: document.title
-          })
+          }),
+          signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+        clearTimeout(longWaitTimer);
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
 
         const data = await response.json();
         state.sessionId = data.sessionId || state.sessionId;
@@ -146,10 +218,11 @@
           speakText(data.reply);
         }
       } catch (_error) {
+        clearTimeout(longWaitTimer);
         setTyping(messagesEl, false);
         pushMessage(
           "assistant",
-          "I hit a small snag there. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate"
+          "I hit a snag getting a reply back. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate or call Jason directly at +1 647-272-7171."
         );
         renderMessages(messagesEl);
       }
@@ -201,6 +274,7 @@
         button.textContent = item;
         button.addEventListener("click", () => {
           input.value = item;
+          autoResizeTextarea();
           form.requestSubmit();
         });
         container.appendChild(button);
@@ -208,8 +282,18 @@
     }
   }
 
-  function setupMic(micBtn, input, form) {
-    if (!micBtn || !input) {
+  function setupMic(parts) {
+    const {
+      micBtn,
+      input,
+      form,
+      overlay,
+      preview,
+      cancelRecordingBtn,
+      useRecordingBtn
+    } = parts;
+
+    if (!micBtn || !input || !overlay || !preview) {
       return;
     }
 
@@ -221,8 +305,9 @@
 
     const recognition = new SpeechRecognition();
     let listening = false;
+    let transcriptText = "";
 
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
@@ -232,23 +317,54 @@
         return;
       }
 
+      transcriptText = "";
+      preview.textContent = "Start speaking...";
+      overlay.hidden = false;
+
       try {
         recognition.start();
       } catch (_error) {
       }
     });
 
+    cancelRecordingBtn.addEventListener("click", () => {
+      transcriptText = "";
+      recognition.stop();
+      overlay.hidden = true;
+      preview.textContent = "Start speaking...";
+    });
+
+    useRecordingBtn.addEventListener("click", () => {
+      if (transcriptText.trim()) {
+        input.value = transcriptText.trim();
+        input.dispatchEvent(new Event("input"));
+      }
+      recognition.stop();
+      overlay.hidden = true;
+      input.focus();
+    });
+
     recognition.onstart = () => {
       listening = true;
       micBtn.classList.add("is-listening");
+      overlay.hidden = false;
     };
 
     recognition.onresult = (event) => {
-      let transcript = "";
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        transcript += event.results[i][0].transcript;
+      let finalText = "";
+      let interimText = "";
+
+      for (let i = 0; i < event.results.length; i += 1) {
+        const piece = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalText += piece + " ";
+        } else {
+          interimText += piece;
+        }
       }
-      input.value = transcript.trim();
+
+      transcriptText = `${finalText}${interimText}`.trim();
+      preview.textContent = transcriptText || "Listening...";
     };
 
     recognition.onend = () => {
@@ -259,6 +375,7 @@
     recognition.onerror = () => {
       listening = false;
       micBtn.classList.remove("is-listening");
+      preview.textContent = "Mic permission was blocked or unavailable.";
     };
 
     input.addEventListener("keydown", (event) => {
@@ -269,20 +386,26 @@
     });
   }
 
-  function setTyping(container, show) {
+  function setTyping(container, text) {
     const existing = container.querySelector(".mlp-typing");
-    if (show && !existing) {
-      const typing = document.createElement("div");
-      typing.className = "mlp-typing";
-      typing.textContent = "thinking...";
-      container.appendChild(typing);
-      container.scrollTop = container.scrollHeight;
+
+    if (!text) {
+      if (existing) {
+        existing.remove();
+      }
       return;
     }
 
-    if (!show && existing) {
-      existing.remove();
+    if (existing) {
+      existing.textContent = text;
+      return;
     }
+
+    const typing = document.createElement("div");
+    typing.className = "mlp-typing";
+    typing.textContent = text;
+    container.appendChild(typing);
+    container.scrollTop = container.scrollHeight;
   }
 
   function pushMessage(role, text, actions) {
