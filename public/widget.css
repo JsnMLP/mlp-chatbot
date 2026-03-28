@@ -52,13 +52,15 @@
   inset: 0;
   display: none;
   flex-direction: column;
-  overflow: visible;
+  overflow: hidden;
   border-radius: 0;
   background:
     linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(244, 236, 222, 0.98)),
     linear-gradient(135deg, #f7f1e8, #edf6ef);
   box-shadow: var(--mlp-shadow);
   border: 1px solid rgba(24, 49, 39, 0.12);
+  height: 100vh;
+  height: 100dvh;
 }
 
 .mlp-panel.is-open {
@@ -73,6 +75,7 @@
   padding: 16px;
   background: linear-gradient(135deg, var(--mlp-green-dark), #cc3300);
   color: #fff;
+  flex-shrink: 0;
 }
 
 .mlp-header strong {
@@ -109,9 +112,11 @@
 }
 
 .mlp-messages {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
   padding: 16px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mlp-message {
@@ -178,15 +183,20 @@
 
 .mlp-quick-replies {
   padding: 0 16px 12px;
+  flex-shrink: 0;
 }
 
 .mlp-form {
   display: flex;
   gap: 10px;
   padding: 16px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   flex-shrink: 0;
   border-top: 1px solid rgb(77, 19, 0);
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.96);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
 }
 
 .mlp-input {
@@ -210,18 +220,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 18px rgb(153, 51, 0);
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-shadow: none;
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .mlp-mic:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 22px rgb(153, 51, 0);
+  box-shadow: none;
 }
 
 .mlp-mic.is-listening {
   background: linear-gradient(135deg, #ff6633, var(--mlp-green));
-  box-shadow: 0 0 0 6px rgba(204, 51, 0, 0.14), 0 10px 24px rgb(153, 51, 0);
+  box-shadow: none;
 }
 
 .mlp-mic__icon {
@@ -284,9 +294,10 @@
     position: fixed;
     inset: 0;
     width: 100vw;
-    height: 100vh;
     max-width: none;
     border-radius: 0;
+    height: 100vh;
+    height: 100dvh;
   }
 
   .mlp-bubble {
