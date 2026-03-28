@@ -36,7 +36,8 @@
         <div class="mlp-messages"></div>
         <div class="mlp-quick-replies"></div>
         <form class="mlp-form">
-          <input class="mlp-input" type="text" placeholder="Type your message..." autocomplete="off" />
+          <input id="mlp-input" class="mlp-input" type="text" placeholder="Type your message..." autocomplete="off" />
+          <button type="button" class="mlp-mic" id="mlp-voice-btn" aria-label="Speak message">🎤</button>
           <button class="mlp-send" type="submit">Send</button>
         </form>
       </section>
@@ -44,6 +45,35 @@
 
     document.body.appendChild(root);
 
+    const micBtn = document.getElementById("mlp-voice-btn");
+const input = document.getElementById("mlp-input");
+
+if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = new SpeechRecognition();
+
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = "en-US";
+
+  micBtn.addEventListener("click", () => {
+    recognition.start();
+    micBtn.textContent = "🎙️";
+  });
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    input.value = transcript;
+  };
+
+  recognition.onend = () => {
+    micBtn.textContent = "🎤";
+  };
+
+  recognition.onerror = () => {
+    micBtn.textContent = "🎤";
+  };
+}
     const launcher = root.querySelector(".mlp-launcher");
     const tooltip = root.querySelector(".mlp-tooltip");
     const panel = root.querySelector(".mlp-panel");
