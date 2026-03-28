@@ -88,7 +88,8 @@
 .mlp-back,
 .mlp-voice,
 .mlp-send,
-.mlp-chip {
+.mlp-chip,
+.mlp-mic {
   border: 0;
   border-radius: 999px;
   cursor: pointer;
@@ -200,6 +201,34 @@
   color: var(--mlp-text);
 }
 
+.mlp-mic {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, var(--mlp-green), #e63900);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 18px rgb(153, 51, 0);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.mlp-mic:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgb(153, 51, 0);
+}
+
+.mlp-mic.is-listening {
+  background: linear-gradient(135deg, #ff6633, var(--mlp-green));
+  box-shadow: 0 0 0 6px rgba(204, 51, 0, 0.14), 0 10px 24px rgb(153, 51, 0);
+}
+
+.mlp-mic__icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .mlp-send {
   min-width: 76px;
   min-height: 48px;
@@ -268,7 +297,8 @@
   .mlp-input,
   .mlp-send,
   .mlp-chip,
-  .mlp-action {
+  .mlp-action,
+  .mlp-mic {
     min-height: 48px;
   }
 }
