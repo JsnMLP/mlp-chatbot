@@ -5,6 +5,9 @@
     (currentScript && new URL(currentScript.src).origin) ||
     window.location.origin;
 
+  const hostPageUrl = window.location.href;
+  const hostPageTitle = document.title;
+
   if (document.getElementById("mlp-chatbot-iframe-wrap")) {
     return;
   }
@@ -63,11 +66,9 @@
     display: flex;
     align-items: flex-end;
     justify-content: flex-end;
-    pointer-events: none;
   }
 
   .launcher {
-    pointer-events: auto;
     width: 68px;
     height: 68px;
     border: 0;
@@ -78,10 +79,11 @@
     cursor: pointer;
     font: inherit;
     font-weight: 700;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .panel {
-    pointer-events: auto;
     width: 100%;
     height: 100%;
     display: none;
@@ -122,6 +124,8 @@
     border-radius: 999px;
     cursor: pointer;
     font: inherit;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .back, .voice {
@@ -225,6 +229,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    box-shadow: none;
   }
 
   .mic.listening {
@@ -376,7 +381,7 @@
     <div class="overlay" id="overlay">
       <div class="rec-card">
         <div class="rec-title">See text</div>
-        <div class="rec-preview" id="preview">Start speaking...</div>
+        <div class="rec-preview" id="preview">Tap the mic and start speaking.</div>
         <div class="bars">
           <span></span><span></span><span></span><span></span><span></span><span></span>
           <span></span><span></span><span></span><span></span><span></span><span></span>
@@ -392,9 +397,11 @@
 <script>
 (function () {
   const apiBase = ${JSON.stringify(apiBase)};
-  const storageKey = "mlp-chatbot-session";
-  const transcriptKey = "mlp-chatbot-transcript";
-  const voiceKey = "mlp-chatbot-voice-enabled";
+  const hostPageUrl = ${JSON.stringify(hostPageUrl)};
+  const hostPageTitle = ${JSON.stringify(hostPageTitle)};
+  const storageKey = "mlp-chatbot-session-v2";
+  const transcriptKey = "mlp-chatbot-transcript-v2";
+  const voiceKey = "mlp-chatbot-voice-enabled-v2";
 
   const launcher = document.getElementById("launcher");
   const panel = document.getElementById("panel");
@@ -417,8 +424,8 @@
   voice.addEventListener("click", toggleVoice);
   form.addEventListener("submit", handleSubmit);
   input.addEventListener("input", autoResize);
-  setupMic();
 
+  setupMic();
   renderMessages();
   renderQuickReplies(state.suggestions.length ? state.suggestions : ["Deck staining", "Power washing", "Get a quote"]);
 
@@ -445,7 +452,7 @@
 
   function toggleVoice() {
     state.voiceEnabled = !state.voiceEnabled;
-    localStorage.setItem(voiceKey, String(state.voiceEnabled));
+    sessionStorage.setItem(voiceKey, String(state.voiceEnabled));
     voice.classList.toggle("is-on", state.voiceEnabled);
   }
 
@@ -459,23 +466,31 @@
     const value = input.value.trim();
     if (!value) return;
 
-    input.value = "";
-    autoResize();
     pushMessage("user", value);
     renderMessages();
+    input.value = "";
+    autoResize();
     setTyping("thinking...");
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function () {
+        controller.abort();
+      }, 45000);
+
       const response = await fetch(apiBase + "/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionId: state.sessionId,
           message: value,
-          pageUrl: parent.location.href,
-          pageTitle: parent.document.title
-        })
+          pageUrl: hostPageUrl,
+          pageTitle: hostPageTitle
+        }),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error("Request failed");
@@ -484,7 +499,7 @@
       const data = await response.json();
       state.sessionId = data.sessionId || state.sessionId;
       state.suggestions = data.suggestions || [];
-      saveStateMeta();
+      saveMeta();
 
       setTyping("");
       pushMessage("assistant", data.reply, data.actions || []);
@@ -496,7 +511,10 @@
       }
     } catch (error) {
       setTyping("");
-      pushMessage("assistant", "I hit a snag getting a reply back. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate");
+      pushMessage(
+        "assistant",
+        "I hit a snag getting a reply back. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate"
+      );
       renderMessages();
     }
   }
@@ -510,10 +528,11 @@
       const bubble = document.createElement("div");
       bubble.className = "bubble";
       bubble.innerHTML = linkify(message.text);
-      wrap.appendChild(bubble);
 
+      wrap.appendChild(bubble);
       messagesEl.appendChild(wrap);
     });
+
     messagesEl.scrollTop = messagesEl.scrollHeight;
   }
 
@@ -556,8 +575,8 @@
     let transcriptText = "";
     let listening = false;
 
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.lang = "en-US";
 
     mic.addEventListener("click", function () {
@@ -565,17 +584,22 @@
         recognition.stop();
         return;
       }
+
       transcriptText = "";
-      preview.textContent = "Start speaking...";
+      preview.textContent = "Listening...";
       overlay.classList.add("show");
-      recognition.start();
+
+      try {
+        recognition.start();
+      } catch (error) {
+      }
     });
 
     cancelRec.addEventListener("click", function () {
       transcriptText = "";
       recognition.stop();
       overlay.classList.remove("show");
-      preview.textContent = "Start speaking...";
+      preview.textContent = "Tap the mic and start speaking.";
     });
 
     useRec.addEventListener("click", function () {
@@ -583,8 +607,8 @@
         input.value = transcriptText.trim();
         autoResize();
       }
-      recognition.stop();
       overlay.classList.remove("show");
+      preview.textContent = "Tap the mic and start speaking.";
       input.focus();
     });
 
@@ -592,21 +616,12 @@
       listening = true;
       mic.classList.add("listening");
       overlay.classList.add("show");
+      preview.textContent = "Listening...";
     };
 
     recognition.onresult = function (event) {
-      let finalText = "";
-      let interimText = "";
-      for (let i = 0; i < event.results.length; i += 1) {
-        const piece = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalText += piece + " ";
-        } else {
-          interimText += piece;
-        }
-      }
-      transcriptText = (finalText + interimText).trim();
-      preview.textContent = transcriptText || "Listening...";
+      transcriptText = event.results[0][0].transcript.trim();
+      preview.textContent = "Got it. Tap Use text.";
     };
 
     recognition.onend = function () {
@@ -622,18 +637,22 @@
   }
 
   function pushMessage(role, text, actions) {
-    state.messages.push({ role: role, text: text, actions: actions || [] });
+    state.messages.push({
+      role: role,
+      text: text,
+      actions: actions || []
+    });
     state.messages = state.messages.slice(-40);
     saveTranscript();
   }
 
   function saveTranscript() {
-    localStorage.setItem(transcriptKey, JSON.stringify(state.messages));
-    saveStateMeta();
+    sessionStorage.setItem(transcriptKey, JSON.stringify(state.messages));
+    saveMeta();
   }
 
-  function saveStateMeta() {
-    localStorage.setItem(storageKey, JSON.stringify({
+  function saveMeta() {
+    sessionStorage.setItem(storageKey, JSON.stringify({
       sessionId: state.sessionId,
       suggestions: state.suggestions || [],
       actions: state.actions || []
@@ -641,14 +660,14 @@
   }
 
   function loadState() {
-    const saved = parseJson(localStorage.getItem(storageKey), {});
-    const transcript = parseJson(localStorage.getItem(transcriptKey), []);
+    const saved = parseJson(sessionStorage.getItem(storageKey), {});
+    const transcript = parseJson(sessionStorage.getItem(transcriptKey), []);
     return {
       sessionId: saved.sessionId || generateId(),
       suggestions: saved.suggestions || [],
       actions: saved.actions || [],
       messages: Array.isArray(transcript) ? transcript : [],
-      voiceEnabled: localStorage.getItem(voiceKey) === "true"
+      voiceEnabled: sessionStorage.getItem(voiceKey) === "true"
     };
   }
 
