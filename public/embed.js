@@ -4,7 +4,6 @@
     (currentScript && currentScript.dataset.apiBase) ||
     (currentScript && new URL(currentScript.src).origin) ||
     window.location.origin;
-
   const storageKey = "mlp-chatbot-session";
   const transcriptKey = "mlp-chatbot-transcript";
   const voiceKey = "mlp-chatbot-voice-enabled";
@@ -21,16 +20,10 @@
     const root = document.createElement("div");
     root.id = "mlp-chatbot-root";
     root.innerHTML = `
-      <button
-        class="mlp-launcher"
-        aria-label="Open chat"
-        style="background-color:#CC3300;color:white;font-family:Arial Black, Arial, sans-serif;border-radius:25px;border:none;background-image:none;"
-      >
-        <span class="mlp-launcher__icon" style="font-family:Arial Black, Arial, sans-serif;color:white;">Chat</span>
+      <button class="mlp-launcher" aria-label="Open chat">
+        <span class="mlp-launcher__icon">Chat</span>
       </button>
-
       <div class="mlp-tooltip" hidden>Have a project in mind? I can help.</div>
-
       <section class="mlp-panel" aria-hidden="true">
         <header class="mlp-header">
           <button class="mlp-back" aria-label="Close chat">&#8592;</button>
@@ -40,25 +33,11 @@
           </div>
           <button class="mlp-voice" aria-label="Toggle voice">&#128266;</button>
         </header>
-
         <div class="mlp-messages"></div>
         <div class="mlp-quick-replies"></div>
-
         <form class="mlp-form">
-          <input
-            id="mlp-input"
-            class="mlp-input"
-            type="text"
-            placeholder="Type your message..."
-            autocomplete="off"
-          />
-          <button
-            type="button"
-            class="mlp-mic"
-            id="mlp-voice-btn"
-            aria-label="Speak message"
-            title="Speak your message"
-          >
+          <input id="mlp-input" class="mlp-input" type="text" placeholder="Type your message..." autocomplete="off" />
+          <button type="button" class="mlp-mic" id="mlp-voice-btn" aria-label="Speak message" title="Speak your message">
             <span class="mlp-mic__icon">&#127908;</span>
           </button>
           <button class="mlp-send" type="submit">Send</button>
