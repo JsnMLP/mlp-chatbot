@@ -1,10 +1,10 @@
 :root {
-  --mlp-green: #1f6a47;
-  --mlp-green-dark: #153d2a;
+  --mlp-green: #CC3300;
+  --mlp-green-dark: #992600;
   --mlp-sand: #f4ecde;
   --mlp-cream: #fffaf2;
-  --mlp-text: #183127;
-  --mlp-shadow: 0 20px 60px rgba(12, 31, 21, 0.18);
+  --mlp-text: #802000;
+  --mlp-shadow: 0 20px 60px rgb(51, 13, 0);
 }
 
 #mlp-chatbot-root {
@@ -20,7 +20,7 @@
   height: 68px;
   border: 0;
   border-radius: 999px;
-  background: radial-gradient(circle at top, #3b9a67, var(--mlp-green-dark));
+  background: radial-gradient(circle at top, #ff6633, var(--mlp-green-dark));
   color: #fff;
   box-shadow: var(--mlp-shadow);
   cursor: pointer;
@@ -73,7 +73,7 @@
   align-items: center;
   gap: 12px;
   padding: 16px;
-  background: linear-gradient(135deg, var(--mlp-green-dark), #27583c);
+  background: linear-gradient(135deg, var(--mlp-green-dark), #cc3300);
   color: #fff;
 }
 
@@ -138,11 +138,11 @@
   background: #fff;
   color: var(--mlp-text);
   border-bottom-left-radius: 6px;
-  box-shadow: 0 12px 28px rgba(14, 29, 21, 0.08);
+  box-shadow: 0 12px 28px rgb(153, 51, 0);
 }
 
 .mlp-message--user .mlp-bubble {
-  background: linear-gradient(135deg, var(--mlp-green), #2c8a5c);
+  background: linear-gradient(135deg, var(--mlp-green), #cc3300);
   color: #fff;
   border-bottom-right-radius: 6px;
 }
@@ -170,7 +170,7 @@
   justify-content: center;
   min-height: 42px;
   padding: 10px 14px;
-  background: rgba(31, 106, 71, 0.1);
+  background: rgb(255, 64, 0);
   color: var(--mlp-green-dark);
   text-decoration: none;
   font-size: 14px;
@@ -185,7 +185,7 @@
   display: flex;
   gap: 10px;
   padding: 16px;
-  border-top: 1px solid rgba(24, 49, 39, 0.08);
+  border-top: 1px solid rgb(77, 19, 0);
   background: rgba(255, 255, 255, 0.68);
 }
 
@@ -195,7 +195,7 @@
   min-height: 48px;
   padding: 0 14px;
   border-radius: 16px;
-  border: 1px solid rgba(24, 49, 39, 0.12);
+  border: 1px solid rgb(77, 19, 0);
   background: #fff;
   font: inherit;
   color: var(--mlp-text);
@@ -205,7 +205,7 @@
   min-width: 76px;
   min-height: 48px;
   padding: 0 16px;
-  background: linear-gradient(135deg, var(--mlp-green), #2c8a5c);
+  background: linear-gradient(135deg, var(--mlp-green), #e63900);
   color: #fff;
   font: inherit;
   font-weight: 700;
@@ -213,7 +213,7 @@
 
 .mlp-typing {
   margin: 0 16px 14px;
-  color: rgba(24, 49, 39, 0.7);
+  color: rgb(102, 26, 0);
   font-size: 14px;
 }
 
@@ -226,7 +226,7 @@
   }
   80% {
     transform: scale(1.04);
-    box-shadow: 0 20px 70px rgba(31, 106, 71, 0.3);
+    box-shadow: 0 20px 70px rgb(153, 51, 0);
   }
 }
 
