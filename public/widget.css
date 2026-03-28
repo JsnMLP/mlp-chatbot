@@ -52,7 +52,7 @@
   inset: 0;
   display: none;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   border-radius: 0;
   background:
     linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(244, 236, 222, 0.98)),
@@ -63,6 +63,7 @@
 
 .mlp-panel.is-open {
   display: flex;
+  flex-direction: column;
 }
 
 .mlp-header {
@@ -182,6 +183,7 @@
   display: flex;
   gap: 10px;
   padding: 16px;
+  flex-shrink: 0;
   border-top: 1px solid rgb(77, 19, 0);
   background: rgba(255, 255, 255, 0.68);
 }
