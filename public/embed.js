@@ -5,353 +5,598 @@
     (currentScript && new URL(currentScript.src).origin) ||
     window.location.origin;
 
+  if (document.getElementById("mlp-chatbot-iframe-wrap")) {
+    return;
+  }
+
+  const wrap = document.createElement("div");
+  wrap.id = "mlp-chatbot-iframe-wrap";
+  wrap.style.position = "fixed";
+  wrap.style.right = "16px";
+  wrap.style.bottom = "16px";
+  wrap.style.zIndex = "2147483647";
+  wrap.style.width = "380px";
+  wrap.style.maxWidth = "calc(100vw - 24px)";
+  wrap.style.height = "720px";
+  wrap.style.maxHeight = "calc(100vh - 24px)";
+  wrap.style.pointerEvents = "auto";
+
+  const iframe = document.createElement("iframe");
+  iframe.title = "My Landscaping Project Chat";
+  iframe.style.width = "100%";
+  iframe.style.height = "100%";
+  iframe.style.border = "0";
+  iframe.style.background = "transparent";
+  iframe.style.overflow = "hidden";
+  iframe.style.borderRadius = "24px";
+  iframe.setAttribute("allow", "microphone");
+  iframe.setAttribute("scrolling", "no");
+
+  const srcdoc = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<style>
+  :root {
+    --mlp-green: #CC3300;
+    --mlp-green-dark: #992600;
+    --mlp-text: #802000;
+    --mlp-shadow: 0 20px 60px rgb(51, 13, 0);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: Verdana, Geneva, sans-serif;
+    background: transparent;
+  }
+
+  #root {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    pointer-events: none;
+  }
+
+  .launcher {
+    pointer-events: auto;
+    width: 68px;
+    height: 68px;
+    border: 0;
+    border-radius: 999px;
+    background: radial-gradient(circle at top, #ff6633, var(--mlp-green-dark));
+    color: #fff;
+    box-shadow: var(--mlp-shadow);
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+  }
+
+  .panel {
+    pointer-events: auto;
+    width: 100%;
+    height: 100%;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 24px;
+    background:
+      linear-gradient(180deg, rgba(255, 250, 242, 0.98), rgba(244, 236, 222, 0.98)),
+      linear-gradient(135deg, #f7f1e8, #edf6ef);
+    box-shadow: var(--mlp-shadow);
+    border: 1px solid rgba(24,49,39,0.12);
+  }
+
+  .panel.open { display: flex; }
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    background: linear-gradient(135deg, var(--mlp-green-dark), #cc3300);
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  .header strong {
+    display: block;
+    font-size: 17px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    opacity: 0.88;
+  }
+
+  .back, .voice, .send, .chip, .mic, .rec-cancel, .rec-use {
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  .back, .voice {
+    width: 40px;
+    height: 40px;
+    background: rgba(255,255,255,0.14);
+    color: #fff;
+    font-size: 18px;
+  }
+
+  .messages {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .message {
+    margin-bottom: 12px;
+  }
+
+  .message.user {
+    text-align: right;
+  }
+
+  .bubble {
+    display: inline-block;
+    max-width: 88%;
+    padding: 12px 14px;
+    border-radius: 18px;
+    line-height: 1.5;
+    font-size: 15px;
+    text-align: left;
+    word-break: break-word;
+  }
+
+  .message.assistant .bubble {
+    background: #fff;
+    color: var(--mlp-text);
+    border-bottom-left-radius: 6px;
+    box-shadow: 0 12px 28px rgb(153, 51, 0);
+  }
+
+  .message.user .bubble {
+    background: linear-gradient(135deg, var(--mlp-green), #cc3300);
+    color: #fff;
+    border-bottom-right-radius: 6px;
+  }
+
+  .quick {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 16px 12px;
+    flex-shrink: 0;
+  }
+
+  .chip {
+    min-height: 42px;
+    padding: 10px 14px;
+    background: rgb(255, 64, 0);
+    color: var(--mlp-green-dark);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .form {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    padding: 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    flex-shrink: 0;
+    border-top: 1px solid rgb(77, 19, 0);
+    background: rgba(255,255,255,0.96);
+  }
+
+  .input {
+    flex: 1;
+    min-width: 0;
+    min-height: 88px;
+    max-height: 140px;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgb(77, 19, 0);
+    background: #fff;
+    color: var(--mlp-text);
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.45;
+    font: inherit;
+  }
+
+  .mic {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, var(--mlp-green), #e63900);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mic.listening {
+    background: linear-gradient(135deg, #ff6633, var(--mlp-green));
+  }
+
+  .send {
+    min-width: 76px;
+    min-height: 48px;
+    padding: 0 16px;
+    background: linear-gradient(135deg, var(--mlp-green), #e63900);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .typing {
+    margin: 0 16px 14px;
+    color: rgb(102,26,0);
+    font-size: 14px;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: rgba(23,10,5,0.45);
+    display: none;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .overlay.show {
+    display: flex;
+  }
+
+  .rec-card {
+    width: min(100%, 480px);
+    background: #231714;
+    color: #fff;
+    border-radius: 24px;
+    padding: 18px 18px 16px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.28);
+  }
+
+  .rec-title {
+    text-align: center;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .rec-preview {
+    min-height: 52px;
+    font-size: 15px;
+    line-height: 1.45;
+    color: #f3ebe7;
+    margin-bottom: 14px;
+  }
+
+  .bars {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 4px;
+    height: 28px;
+    margin-bottom: 16px;
+  }
+
+  .bars span {
+    width: 4px;
+    height: 8px;
+    border-radius: 999px;
+    background: #d7c6be;
+    animation: bars 1s ease-in-out infinite;
+  }
+
+  .bars span:nth-child(2){animation-delay:.05s}
+  .bars span:nth-child(3){animation-delay:.1s}
+  .bars span:nth-child(4){animation-delay:.15s}
+  .bars span:nth-child(5){animation-delay:.2s}
+  .bars span:nth-child(6){animation-delay:.25s}
+  .bars span:nth-child(7){animation-delay:.3s}
+  .bars span:nth-child(8){animation-delay:.35s}
+  .bars span:nth-child(9){animation-delay:.4s}
+  .bars span:nth-child(10){animation-delay:.45s}
+  .bars span:nth-child(11){animation-delay:.5s}
+  .bars span:nth-child(12){animation-delay:.55s}
+
+  .rec-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  .rec-cancel, .rec-use {
+    min-height: 42px;
+    padding: 0 16px;
+    font-weight: 700;
+  }
+
+  .rec-cancel {
+    background: #453430;
+    color: #fff;
+  }
+
+  .rec-use {
+    background: linear-gradient(135deg, var(--mlp-green), #e63900);
+    color: #fff;
+  }
+
+  @keyframes bars {
+    0%,100% { height: 8px; opacity: .45; }
+    50% { height: 26px; opacity: 1; }
+  }
+
+  @media (max-width: 680px) {
+    .panel {
+      border-radius: 0;
+    }
+  }
+</style>
+</head>
+<body>
+  <div id="root">
+    <button class="launcher" id="launcher">Chat</button>
+
+    <section class="panel" id="panel" aria-hidden="true">
+      <header class="header">
+        <button class="back" id="back">&#8592;</button>
+        <div>
+          <strong>My Landscaping Project</strong>
+          <div class="subtitle">Chat with Jason's assistant</div>
+        </div>
+        <button class="voice" id="voice">&#128266;</button>
+      </header>
+
+      <div class="messages" id="messages"></div>
+      <div class="quick" id="quick"></div>
+
+      <form class="form" id="form">
+        <textarea id="input" class="input" placeholder="Type your message..." rows="3"></textarea>
+        <button type="button" class="mic" id="mic">&#127908;</button>
+        <button type="submit" class="send">Send</button>
+      </form>
+    </section>
+
+    <div class="overlay" id="overlay">
+      <div class="rec-card">
+        <div class="rec-title">See text</div>
+        <div class="rec-preview" id="preview">Start speaking...</div>
+        <div class="bars">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="rec-actions">
+          <button type="button" class="rec-cancel" id="cancelRec">Cancel</button>
+          <button type="button" class="rec-use" id="useRec">Use text</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const apiBase = ${JSON.stringify(apiBase)};
   const storageKey = "mlp-chatbot-session";
   const transcriptKey = "mlp-chatbot-transcript";
   const voiceKey = "mlp-chatbot-voice-enabled";
+
+  const launcher = document.getElementById("launcher");
+  const panel = document.getElementById("panel");
+  const back = document.getElementById("back");
+  const voice = document.getElementById("voice");
+  const messagesEl = document.getElementById("messages");
+  const quickEl = document.getElementById("quick");
+  const form = document.getElementById("form");
+  const input = document.getElementById("input");
+  const mic = document.getElementById("mic");
+  const overlay = document.getElementById("overlay");
+  const preview = document.getElementById("preview");
+  const cancelRec = document.getElementById("cancelRec");
+  const useRec = document.getElementById("useRec");
+
   const state = loadState();
 
-  injectStyles(`${apiBase}/widget.css`);
-  createWidget();
+  launcher.addEventListener("click", openChat);
+  back.addEventListener("click", closeChat);
+  voice.addEventListener("click", toggleVoice);
+  form.addEventListener("submit", handleSubmit);
+  input.addEventListener("input", autoResize);
+  setupMic();
 
-  function createWidget() {
-    if (document.getElementById("mlp-chatbot-root")) {
-      return;
-    }
+  renderMessages();
+  renderQuickReplies(state.suggestions.length ? state.suggestions : ["Deck staining", "Power washing", "Get a quote"]);
 
-    const root = document.createElement("div");
-    root.id = "mlp-chatbot-root";
-    root.innerHTML = `
-      <button class="mlp-launcher" aria-label="Open chat">
-        <span class="mlp-launcher__icon">Chat</span>
-      </button>
+  if (!state.messages.length) {
+    pushMessage("assistant", "Hi - I can help with deck staining, power washing, or talk through a bigger outdoor project and point you to the right next step. What are you looking to take care of?");
+    renderMessages();
+  }
 
-      <div class="mlp-tooltip" hidden>Have a project in mind? I can help.</div>
+  autoResize();
 
-      <section class="mlp-panel" aria-hidden="true">
-        <header class="mlp-header">
-          <button class="mlp-back" aria-label="Close chat">&#8592;</button>
-          <div>
-            <strong>My Landscaping Project</strong>
-            <div class="mlp-subtitle">Chat with Jason's assistant</div>
-          </div>
-          <button class="mlp-voice" aria-label="Toggle voice">&#128266;</button>
-        </header>
+  function openChat() {
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+    launcher.style.display = "none";
+    input.focus();
+    autoResize();
+  }
 
-        <div class="mlp-messages"></div>
-        <div class="mlp-quick-replies"></div>
+  function closeChat() {
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+    launcher.style.display = "inline-block";
+  }
 
-        <form class="mlp-form">
-          <textarea
-            id="mlp-input"
-            class="mlp-input"
-            placeholder="Type your message..."
-            rows="3"
-          ></textarea>
-          <button
-            type="button"
-            class="mlp-mic"
-            id="mlp-voice-btn"
-            aria-label="Speak message"
-            title="Speak your message"
-          >
-            <span class="mlp-mic__icon">&#127908;</span>
-          </button>
-          <button class="mlp-send" type="submit">Send</button>
-        </form>
-      </section>
+  function toggleVoice() {
+    state.voiceEnabled = !state.voiceEnabled;
+    localStorage.setItem(voiceKey, String(state.voiceEnabled));
+    voice.classList.toggle("is-on", state.voiceEnabled);
+  }
 
-      <div class="mlp-recording-overlay" hidden>
-        <div class="mlp-recording-card">
-          <div class="mlp-recording-title">See text</div>
-          <div class="mlp-recording-preview">Start speaking...</div>
-          <div class="mlp-recording-bars" aria-hidden="true">
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span>
-          </div>
-          <div class="mlp-recording-actions">
-            <button type="button" class="mlp-recording-cancel">Cancel</button>
-            <button type="button" class="mlp-recording-use">Use text</button>
-          </div>
-        </div>
-      </div>
-    `;
+  function autoResize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 140) + "px";
+  }
 
-    document.body.appendChild(root);
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const value = input.value.trim();
+    if (!value) return;
 
-    const launcher = root.querySelector(".mlp-launcher");
-    const tooltip = root.querySelector(".mlp-tooltip");
-    const panel = root.querySelector(".mlp-panel");
-    const backButton = root.querySelector(".mlp-back");
-    const voiceButton = root.querySelector(".mlp-voice");
-    const messagesEl = root.querySelector(".mlp-messages");
-    const quickRepliesEl = root.querySelector(".mlp-quick-replies");
-    const form = root.querySelector(".mlp-form");
-    const input = root.querySelector("#mlp-input");
-    const micBtn = root.querySelector("#mlp-voice-btn");
-    const overlay = root.querySelector(".mlp-recording-overlay");
-    const preview = root.querySelector(".mlp-recording-preview");
-    const cancelRecordingBtn = root.querySelector(".mlp-recording-cancel");
-    const useRecordingBtn = root.querySelector(".mlp-recording-use");
+    input.value = "";
+    autoResize();
+    pushMessage("user", value);
+    renderMessages();
+    setTyping("thinking...");
 
-    voiceButton.classList.toggle("is-on", state.voiceEnabled);
-
-    setupMic({
-      micBtn,
-      input,
-      overlay,
-      preview,
-      cancelRecordingBtn,
-      useRecordingBtn
-    });
-
-    renderMessages(messagesEl);
-    renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
-
-    launcher.addEventListener("click", openChat);
-    backButton.addEventListener("click", closeChat);
-    voiceButton.addEventListener("click", toggleVoice);
-    form.addEventListener("submit", handleSubmit);
-    input.addEventListener("input", autoResizeTextarea);
-
-    setTimeout(() => {
-      if (!state.messages.length) {
-        tooltip.hidden = false;
-        tooltip.textContent = "Hey - quick question: are you looking to clean or restore something?";
-      }
-    }, 9000);
-
-    setTimeout(() => {
-      tooltip.hidden = true;
-    }, 18000);
-
-    if (!state.messages.length) {
-      const greeting =
-        "Hi - I can help with deck staining, power washing, or talk through a bigger outdoor project and point you to the right next step. What are you looking to take care of?";
-      pushMessage("assistant", greeting);
-      renderMessages(messagesEl);
-    }
-
-    autoResizeTextarea();
-
-    function autoResizeTextarea() {
-      input.style.height = "auto";
-      input.style.height = Math.min(input.scrollHeight, 140) + "px";
-    }
-
-    function openChat() {
-      panel.classList.add("is-open");
-      panel.setAttribute("aria-hidden", "false");
-      tooltip.hidden = true;
-      input.focus();
-      autoResizeTextarea();
-    }
-
-    function closeChat() {
-      panel.classList.remove("is-open");
-      panel.setAttribute("aria-hidden", "true");
-    }
-
-    function toggleVoice() {
-      state.voiceEnabled = !state.voiceEnabled;
-      localStorage.setItem(voiceKey, String(state.voiceEnabled));
-      voiceButton.classList.toggle("is-on", state.voiceEnabled);
-    }
-
-    async function handleSubmit(event) {
-      event.preventDefault();
-      const value = input.value.trim();
-      if (!value) {
-        return;
-      }
-
-      input.value = "";
-      autoResizeTextarea();
-      pushMessage("user", value);
-      renderMessages(messagesEl);
-      setTyping(messagesEl, "thinking...");
-
-      let longWaitTimer = null;
-
-      try {
-        longWaitTimer = setTimeout(() => {
-          setTyping(messagesEl, "Still working on it...");
-        }, 8000);
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 65000);
-
-        const response = await fetch(`${apiBase}/api/chat`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            sessionId: state.sessionId,
-            message: value,
-            pageUrl: window.location.href,
-            pageTitle: document.title
-          }),
-          signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
-        clearTimeout(longWaitTimer);
-
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        state.sessionId = data.sessionId || state.sessionId;
-        state.suggestions = data.suggestions || [];
-        state.actions = data.actions || [];
-        saveState();
-
-        setTyping(messagesEl, false);
-        pushMessage("assistant", data.reply, data.actions || []);
-        renderMessages(messagesEl);
-        renderQuickReplies(quickRepliesEl, data.suggestions || []);
-
-        if (state.voiceEnabled) {
-          speakText(data.reply);
-        }
-      } catch (_error) {
-        clearTimeout(longWaitTimer);
-        setTyping(messagesEl, false);
-        pushMessage(
-          "assistant",
-          "I hit a snag getting a reply back. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate or call Jason directly at +1 647-272-7171."
-        );
-        renderMessages(messagesEl);
-      }
-    }
-
-    function renderMessages(container) {
-      container.innerHTML = "";
-
-      state.messages.forEach((message) => {
-        const bubble = document.createElement("div");
-        bubble.className = `mlp-message mlp-message--${message.role}`;
-
-        const text = document.createElement("div");
-        text.className = "mlp-bubble";
-        text.innerHTML = linkify(message.text);
-        bubble.appendChild(text);
-
-        if (Array.isArray(message.actions) && message.actions.length) {
-          const actionsWrap = document.createElement("div");
-          actionsWrap.className = "mlp-inline-actions";
-
-          message.actions.forEach((action) => {
-            const actionEl = document.createElement("a");
-            actionEl.className = "mlp-action";
-            actionEl.textContent = action.label;
-            actionEl.href = action.url;
-            if (action.type === "link") {
-              actionEl.target = "_blank";
-              actionEl.rel = "noopener noreferrer";
-            }
-            actionsWrap.appendChild(actionEl);
-          });
-
-          bubble.appendChild(actionsWrap);
-        }
-
-        container.appendChild(bubble);
+    try {
+      const response = await fetch(apiBase + "/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          message: value,
+          pageUrl: parent.location.href,
+          pageTitle: parent.document.title
+        })
       });
 
-      container.scrollTop = container.scrollHeight;
-    }
+      if (!response.ok) {
+        throw new Error("Request failed");
+      }
 
-    function renderQuickReplies(container, items) {
-      container.innerHTML = "";
-      items.slice(0, 3).forEach((item) => {
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "mlp-chip";
-        button.textContent = item;
-        button.addEventListener("click", () => {
-          input.value = item;
-          autoResizeTextarea();
-          form.requestSubmit();
-        });
-        container.appendChild(button);
-      });
+      const data = await response.json();
+      state.sessionId = data.sessionId || state.sessionId;
+      state.suggestions = data.suggestions || [];
+      saveStateMeta();
+
+      setTyping("");
+      pushMessage("assistant", data.reply, data.actions || []);
+      renderMessages();
+      renderQuickReplies(data.suggestions || []);
+
+      if (state.voiceEnabled) {
+        speakText(data.reply);
+      }
+    } catch (error) {
+      setTyping("");
+      pushMessage("assistant", "I hit a snag getting a reply back. You can still request an estimate here: https://www.mylandscapingproject.ca/free-estimate");
+      renderMessages();
     }
   }
 
-  function setupMic(parts) {
-    const {
-      micBtn,
-      input,
-      overlay,
-      preview,
-      cancelRecordingBtn,
-      useRecordingBtn
-    } = parts;
+  function renderMessages() {
+    messagesEl.innerHTML = "";
+    state.messages.forEach(function (message) {
+      const wrap = document.createElement("div");
+      wrap.className = "message " + message.role;
 
-    if (!micBtn || !input || !overlay || !preview) {
-      return;
-    }
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.innerHTML = linkify(message.text);
+      wrap.appendChild(bubble);
 
+      messagesEl.appendChild(wrap);
+    });
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function renderQuickReplies(items) {
+    quickEl.innerHTML = "";
+    items.slice(0, 3).forEach(function (item) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chip";
+      button.textContent = item;
+      button.addEventListener("click", function () {
+        input.value = item;
+        autoResize();
+        form.requestSubmit();
+      });
+      quickEl.appendChild(button);
+    });
+  }
+
+  function setTyping(text) {
+    const old = document.querySelector(".typing");
+    if (old) old.remove();
+    if (!text) return;
+
+    const div = document.createElement("div");
+    div.className = "typing";
+    div.textContent = text;
+    messagesEl.appendChild(div);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function setupMic() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      micBtn.style.display = "none";
+      mic.style.display = "none";
       return;
     }
 
     const recognition = new SpeechRecognition();
-    let listening = false;
     let transcriptText = "";
+    let listening = false;
 
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    micBtn.addEventListener("click", () => {
+    mic.addEventListener("click", function () {
       if (listening) {
         recognition.stop();
         return;
       }
-
       transcriptText = "";
       preview.textContent = "Start speaking...";
-      overlay.hidden = false;
-
-      try {
-        recognition.start();
-      } catch (_error) {
-      }
+      overlay.classList.add("show");
+      recognition.start();
     });
 
-    cancelRecordingBtn.addEventListener("click", () => {
+    cancelRec.addEventListener("click", function () {
       transcriptText = "";
       recognition.stop();
-      overlay.hidden = true;
+      overlay.classList.remove("show");
       preview.textContent = "Start speaking...";
     });
 
-    useRecordingBtn.addEventListener("click", () => {
+    useRec.addEventListener("click", function () {
       if (transcriptText.trim()) {
         input.value = transcriptText.trim();
-        input.dispatchEvent(new Event("input"));
+        autoResize();
       }
       recognition.stop();
-      overlay.hidden = true;
+      overlay.classList.remove("show");
       input.focus();
     });
 
-    recognition.onstart = () => {
+    recognition.onstart = function () {
       listening = true;
-      micBtn.classList.add("is-listening");
-      overlay.hidden = false;
+      mic.classList.add("listening");
+      overlay.classList.add("show");
     };
 
-    recognition.onresult = (event) => {
+    recognition.onresult = function (event) {
       let finalText = "";
       let interimText = "";
-
       for (let i = 0; i < event.results.length; i += 1) {
         const piece = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
@@ -360,65 +605,39 @@
           interimText += piece;
         }
       }
-
-      transcriptText = `${finalText}${interimText}`.trim();
+      transcriptText = (finalText + interimText).trim();
       preview.textContent = transcriptText || "Listening...";
     };
 
-    recognition.onend = () => {
+    recognition.onend = function () {
       listening = false;
-      micBtn.classList.remove("is-listening");
+      mic.classList.remove("listening");
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = function () {
       listening = false;
-      micBtn.classList.remove("is-listening");
+      mic.classList.remove("listening");
       preview.textContent = "Mic permission was blocked or unavailable.";
     };
   }
 
-  function setTyping(container, text) {
-    const existing = container.querySelector(".mlp-typing");
-
-    if (!text) {
-      if (existing) {
-        existing.remove();
-      }
-      return;
-    }
-
-    if (existing) {
-      existing.textContent = text;
-      return;
-    }
-
-    const typing = document.createElement("div");
-    typing.className = "mlp-typing";
-    typing.textContent = text;
-    container.appendChild(typing);
-    container.scrollTop = container.scrollHeight;
-  }
-
   function pushMessage(role, text, actions) {
-    state.messages.push({
-      role: role,
-      text: text,
-      actions: actions || []
-    });
+    state.messages.push({ role: role, text: text, actions: actions || [] });
     state.messages = state.messages.slice(-40);
-    saveState();
+    saveTranscript();
   }
 
-  function saveState() {
-    localStorage.setItem(
-      storageKey,
-      JSON.stringify({
-        sessionId: state.sessionId,
-        suggestions: state.suggestions || [],
-        actions: state.actions || []
-      })
-    );
+  function saveTranscript() {
     localStorage.setItem(transcriptKey, JSON.stringify(state.messages));
+    saveStateMeta();
+  }
+
+  function saveStateMeta() {
+    localStorage.setItem(storageKey, JSON.stringify({
+      sessionId: state.sessionId,
+      suggestions: state.suggestions || [],
+      actions: state.actions || []
+    }));
   }
 
   function loadState() {
@@ -436,7 +655,7 @@
   function parseJson(value, fallback) {
     try {
       return value ? JSON.parse(value) : fallback;
-    } catch (_error) {
+    } catch (e) {
       return fallback;
     }
   }
@@ -445,38 +664,14 @@
     if (window.crypto && window.crypto.randomUUID) {
       return window.crypto.randomUUID();
     }
-    return `mlp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-  }
-
-  function injectStyles(href) {
-    if (document.querySelector(`link[href="${href}"]`)) {
-      return;
-    }
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = href;
-    document.head.appendChild(link);
+    return "mlp-" + Date.now() + "-" + Math.random().toString(16).slice(2);
   }
 
   function speakText(text) {
     if (!("speechSynthesis" in window)) {
       return;
     }
-
-    const utterance = new SpeechSynthesisUtterance(text.replace(/https?:\/\/\S+/g, ""));
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice =
-      voices.find((voice) => /david|mark|guy|daniel/i.test(voice.name)) ||
-      voices.find((voice) => /male/i.test(voice.name)) ||
-      voices[0];
-
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-
-    utterance.rate = 0.95;
-    utterance.pitch = 0.8;
-    utterance.volume = 1;
+    const utterance = new SpeechSynthesisUtterance(text.replace(/https?:\\/\\/\\S+/g, ""));
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
   }
@@ -486,7 +681,38 @@
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
-
-    return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return escaped.replace(/(https?:\\/\\/[^\\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
   }
+})();
+</script>
+</body>
+</html>
+  `;
+
+  iframe.srcdoc = srcdoc;
+  wrap.appendChild(iframe);
+  document.body.appendChild(wrap);
+
+  function updateMobileSize() {
+    if (window.innerWidth <= 680) {
+      wrap.style.right = "0";
+      wrap.style.bottom = "0";
+      wrap.style.width = "100vw";
+      wrap.style.maxWidth = "100vw";
+      wrap.style.height = "100dvh";
+      wrap.style.maxHeight = "100dvh";
+      iframe.style.borderRadius = "0";
+    } else {
+      wrap.style.right = "16px";
+      wrap.style.bottom = "16px";
+      wrap.style.width = "380px";
+      wrap.style.maxWidth = "calc(100vw - 24px)";
+      wrap.style.height = "720px";
+      wrap.style.maxHeight = "calc(100vh - 24px)";
+      iframe.style.borderRadius = "24px";
+    }
+  }
+
+  updateMobileSize();
+  window.addEventListener("resize", updateMobileSize);
 })();
