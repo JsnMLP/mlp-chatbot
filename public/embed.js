@@ -109,9 +109,10 @@
     renderMessages(messagesEl);
     renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
 
-    launcher.addEventListener("click", openChat);
-    backButton.addEventListener("click", closeChat);
-    voiceButton.addEventListener("click", toggleVoice);
+    bindTap(launcher, openChat);
+    bindTap(backButton, closeChat);
+    bindTap(voiceButton, toggleVoice);
+
     form.addEventListener("submit", handleSubmit);
     input.addEventListener("input", autoResizeTextarea);
 
@@ -282,6 +283,33 @@
     }
   }
 
+  function bindTap(element, handler) {
+    if (!element) {
+      return;
+    }
+
+    let touched = false;
+
+    element.addEventListener(
+      "touchstart",
+      function (event) {
+        touched = true;
+        event.preventDefault();
+        handler(event);
+      },
+      { passive: false }
+    );
+
+    element.addEventListener("click", function (event) {
+      if (touched) {
+        touched = false;
+        return;
+      }
+      event.preventDefault();
+      handler(event);
+    });
+  }
+
   function setupMic(parts) {
     const {
       micBtn,
@@ -311,7 +339,7 @@
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    micBtn.addEventListener("click", () => {
+    bindTap(micBtn, () => {
       if (listening) {
         recognition.stop();
         return;
@@ -327,14 +355,14 @@
       }
     });
 
-    cancelRecordingBtn.addEventListener("click", () => {
+    bindTap(cancelRecordingBtn, () => {
       transcriptText = "";
       recognition.stop();
       overlay.hidden = true;
       preview.textContent = "Start speaking...";
     });
 
-    useRecordingBtn.addEventListener("click", () => {
+    bindTap(useRecordingBtn, () => {
       if (transcriptText.trim()) {
         input.value = transcriptText.trim();
         input.dispatchEvent(new Event("input"));
