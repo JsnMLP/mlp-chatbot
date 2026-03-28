@@ -45,10 +45,13 @@
 
     document.body.appendChild(root);
 
-    const micBtn = document.getElementById("mlp-voice-btn");
-const input = document.getElementById("mlp-input");
+    if (!root) return;
+    const micBtn = root.querySelector("#mlp-voice-btn");
+    const input = root.querySelector("#mlp-input");
 
-if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+    if (!micBtn || !input) return;
+
+  if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   const recognition = new SpeechRecognition();
 
