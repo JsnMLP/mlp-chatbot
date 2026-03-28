@@ -13,6 +13,14 @@
   bottom: 16px;
   z-index: 999999;
   font-family: Verdana, Geneva, sans-serif;
+  pointer-events: none;
+}
+
+#mlp-chatbot-root .mlp-launcher,
+#mlp-chatbot-root .mlp-panel,
+#mlp-chatbot-root .mlp-tooltip,
+#mlp-chatbot-root .mlp-recording-overlay {
+  pointer-events: auto;
 }
 
 .mlp-launcher {
@@ -25,6 +33,8 @@
   box-shadow: var(--mlp-shadow);
   cursor: pointer;
   animation: mlp-bounce 0.8s ease-out 1, mlp-pulse 10s ease-in-out infinite;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mlp-launcher__icon {
@@ -107,6 +117,8 @@
   background: rgba(255, 255, 255, 0.14);
   color: #fff;
   font-size: 18px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mlp-voice.is-on {
@@ -229,6 +241,8 @@
   justify-content: center;
   box-shadow: none;
   transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mlp-mic:hover {
@@ -255,6 +269,8 @@
   color: #fff;
   font: inherit;
   font-weight: 700;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mlp-recording-overlay {
@@ -334,6 +350,8 @@
   padding: 0 16px;
   font: inherit;
   font-weight: 700;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .mlp-recording-cancel {
