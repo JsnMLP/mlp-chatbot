@@ -99,7 +99,6 @@
     setupMic({
       micBtn,
       input,
-      form,
       overlay,
       preview,
       cancelRecordingBtn,
@@ -109,10 +108,9 @@
     renderMessages(messagesEl);
     renderQuickReplies(quickRepliesEl, state.suggestions || ["Deck staining", "Power washing", "Get a quote"]);
 
-    bindPress(launcher, openChat);
-    bindPress(backButton, closeChat);
-    bindPress(voiceButton, toggleVoice);
-
+    launcher.addEventListener("click", openChat);
+    backButton.addEventListener("click", closeChat);
+    voiceButton.addEventListener("click", toggleVoice);
     form.addEventListener("submit", handleSubmit);
     input.addEventListener("input", autoResizeTextarea);
 
@@ -283,32 +281,10 @@
     }
   }
 
-  function bindPress(element, handler) {
-    if (!element) {
-      return;
-    }
-
-    let handledPointer = false;
-
-    element.addEventListener("pointerup", function (event) {
-      handledPointer = true;
-      handler(event);
-    });
-
-    element.addEventListener("click", function (event) {
-      if (handledPointer) {
-        handledPointer = false;
-        return;
-      }
-      handler(event);
-    });
-  }
-
   function setupMic(parts) {
     const {
       micBtn,
       input,
-      form,
       overlay,
       preview,
       cancelRecordingBtn,
@@ -333,7 +309,7 @@
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
-    bindPress(micBtn, () => {
+    micBtn.addEventListener("click", () => {
       if (listening) {
         recognition.stop();
         return;
@@ -349,14 +325,14 @@
       }
     });
 
-    bindPress(cancelRecordingBtn, () => {
+    cancelRecordingBtn.addEventListener("click", () => {
       transcriptText = "";
       recognition.stop();
       overlay.hidden = true;
       preview.textContent = "Start speaking...";
     });
 
-    bindPress(useRecordingBtn, () => {
+    useRecordingBtn.addEventListener("click", () => {
       if (transcriptText.trim()) {
         input.value = transcriptText.trim();
         input.dispatchEvent(new Event("input"));
@@ -399,13 +375,6 @@
       micBtn.classList.remove("is-listening");
       preview.textContent = "Mic permission was blocked or unavailable.";
     };
-
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" && !event.shiftKey) {
-        event.preventDefault();
-        form.requestSubmit();
-      }
-    });
   }
 
   function setTyping(container, text) {
