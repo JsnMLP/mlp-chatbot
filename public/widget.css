@@ -27,7 +27,6 @@
   animation: mlp-bounce 0.8s ease-out 1, mlp-pulse 10s ease-in-out infinite;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  pointer-events: auto;
 }
 
 .mlp-launcher__icon {
@@ -48,7 +47,6 @@
   box-shadow: var(--mlp-shadow);
   font-size: 14px;
   line-height: 1.4;
-  pointer-events: auto;
 }
 
 .mlp-panel {
@@ -65,7 +63,6 @@
   border: 1px solid rgba(24, 49, 39, 0.12);
   height: 100vh;
   height: 100dvh;
-  pointer-events: auto;
 }
 
 .mlp-panel.is-open {
@@ -278,7 +275,6 @@
   justify-content: center;
   padding: 20px;
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  pointer-events: auto;
 }
 
 .mlp-recording-card {
