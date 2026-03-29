@@ -158,8 +158,33 @@
   border-bottom-right-radius: 6px;
 }
 
-.mlp-bubble a {
+.mlp-bubble a,
+.mlp-action {
   color: inherit;
+}
+
+.mlp-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.mlp-inline-actions {
+  margin-top: 8px;
+}
+
+.mlp-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 14px;
+  background: rgb(255, 64, 0);
+  color: var(--mlp-green-dark);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 999px;
 }
 
 .mlp-form {
