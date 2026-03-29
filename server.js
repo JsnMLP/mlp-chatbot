@@ -15,7 +15,9 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = Number(process.env.PORT || 3000);
 const publicAppUrl = process.env.PUBLIC_APP_URL || `http://localhost:${port}`;
-const businessEmail = process.env.BUSINESS_EMAIL || "jason@mylandscapingproject.ca";
+const businessEmail = process.env.BUSINESS_EMAIL || "info@mylandscapingproject.ca";
+const businessPhoneDisplay = process.env.BUSINESS_PHONE_DISPLAY || "(647) 272-7171";
+const businessPhoneHref = process.env.BUSINESS_PHONE_HREF || "tel:+16472727171";
 const dataDir = path.join(__dirname, "data");
 const sessions = new Map();
 
@@ -52,7 +54,6 @@ app.use(
   })
 );
 app.use(express.json({ limit: "1mb" }));
-app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -94,6 +95,8 @@ app.get("/", (_req, res) => {
 </html>`);
 });
 
+app.use(express.static(path.join(__dirname, "public")));
+
 app.post("/api/chat", async (req, res) => {
   try {
     const message = String(req.body.message || "").trim();
@@ -112,6 +115,7 @@ app.post("/api/chat", async (req, res) => {
 
     updateSessionFromMessage(session, message);
     session.messages.push({ role: "user", text: message, at: new Date().toISOString() });
+
     await appendJsonl("chat-log.jsonl", {
       sessionId,
       role: "user",
@@ -122,9 +126,12 @@ app.post("/api/chat", async (req, res) => {
     });
 
     const guidance = buildGuidance(session, message);
-    const aiReply = openai
-      ? await generateAssistantReply({ session, message, guidance })
-      : fallbackReply(guidance);
+    const scriptedReply = buildScriptedReply({ session, message, guidance });
+    const aiReply = scriptedReply
+      ? scriptedReply
+      : openai
+        ? await generateAssistantReply({ session, message, guidance })
+        : fallbackReply(guidance);
 
     session.messages.push({ role: "assistant", text: aiReply.reply, at: new Date().toISOString() });
     applyPostReplyState(session, guidance);
@@ -134,6 +141,7 @@ app.post("/api/chat", async (req, res) => {
     }
 
     await persistSessionSnapshot(session);
+
     await appendJsonl("chat-log.jsonl", {
       sessionId,
       role: "assistant",
@@ -496,6 +504,90 @@ function buildGuidance(session, message) {
   return guidance;
 }
 
+function buildScriptedReply({ session, message, guidance }) {
+  const powerWashIntent = detectPowerWashingIntent(message, session, guidance);
+  if (!powerWashIntent) {
+    return null;
+  }
+
+  return {
+    reply: buildPowerWashingReply(powerWashIntent),
+    actions: []
+  };
+}
+
+function detectPowerWashingIntent(message, session, guidance) {
+  const lower = message.toLowerCase();
+  const hasPowerWashKeywords = /\b(power wash|power washing|pressure wash|pressure washing|driveway|patio|interlock|concrete|algae|surface dirt)\b/i.test(lower);
+  const serviceHint = session.serviceRequested === "Power washing" || hasPowerWashKeywords;
+
+  if (!serviceHint) {
+    return null;
+  }
+
+  if (/\b(seal|sealing|sealed)\b/i.test(lower)) {
+    if (/\b(still|but|what if|do you also|can you also|also seal|seal it too|want sealing|again)\b/i.test(lower)) {
+      return "powerwash-sealing-repeat";
+    }
+    return "powerwash-sealing";
+  }
+
+  if (/\b(send photos|photos later|i'?ll send photos|later|tomorrow|get back to you|follow up)\b/i.test(lower)) {
+    return "powerwash-delay";
+  }
+
+  if (/\b(guarantee|guaranteed|will it come out|how clean|what if it doesn'?t|expectation|realistic)\b/i.test(lower)) {
+    return "powerwash-trust";
+  }
+
+  if (/\b(when can you come|when can you start|when are you available|book|booking|come out|quote it|quote this|estimate this|next step)\b/i.test(lower)) {
+    return "powerwash-booking";
+  }
+
+  if (/\b(\$100|100 dollars|hundred bucks|cheaper|lower price|too much|expensive|overpriced|i'?ve seen 100)\b/i.test(lower)) {
+    return "powerwash-objection";
+  }
+
+  if (/\b(price|pricing|cost|how much|quote|rate|per square foot|sq ft|square foot|2-car|two car)\b/i.test(lower)) {
+    return "powerwash-pricing";
+  }
+
+  if (/\b(driveway|patio|grime|dirty|slippery|algae|surface dirt|worth it|should i|thinking about)\b/i.test(lower)) {
+    return "powerwash-inquiry";
+  }
+
+  if (!hasPowerWashKeywords) {
+    return null;
+  }
+
+  return guidance.type === "pricing" ? "powerwash-pricing" : "powerwash-inquiry";
+}
+
+function buildPowerWashingReply(intent) {
+  const pageUrl = "https://www.mylandscapingproject.ca/power-washing";
+
+  const responses = {
+    "powerwash-inquiry":
+      "That's a great question, and yes, in most cases it is absolutely worth it. Over time, driveways and patios collect dirt, algae, and grime that can make the surface look tired, become slippery, and wear down faster. A proper power wash can refresh the whole space surprisingly quickly. What's prompting you to look into it right now?",
+    "powerwash-pricing":
+      `Nice, that's usually exactly when people reach out. For something like a 2-car driveway and a small patio, most projects tend to land somewhere in the $300-$700+ range, depending on the size, material, and overall condition. I price it more precisely at $0.50 per square foot with a $150 minimum so it stays fair and consistent. You can see the package options here: ${pageUrl}. Are you mostly dealing with surface dirt, or is there any darker buildup like algae or staining?`,
+    "powerwash-objection":
+      `That's fair, and there are definitely lower-priced options out there. What I focus on is doing the cleaning properly so the surface is actually cleaned without damage and stays cleaner longer. A lot of the lower-priced work tends to be more of a quick rinse than a proper treatment. You can see exactly what's included here: ${pageUrl}.`,
+    "powerwash-sealing":
+      `That's a great question. I focus specifically on doing the cleaning properly, which is where most of the real impact comes from. A thorough power wash usually brings the surface back to life on its own, and in many cases sealing is not even necessary right away. If your main goal is to get everything looking clean and refreshed again, you can see how I handle that here: ${pageUrl}.`,
+    "powerwash-sealing-repeat":
+      `That's fair, and sealing can definitely have its place. That said, the most important step is getting the surface properly cleaned first because sealing will not perform the way it should without that step. In many cases, once everything is cleaned up, it already looks the way most homeowners were hoping for. If you'd like, you can take a look at how I handle the cleaning side here: ${pageUrl}.`,
+    "powerwash-booking":
+      `Great question. Most of the time I can quote it without needing to come out. If you send over a couple photos of the driveway or patio and the address if you'd like, I can measure everything and send back a clear price. You can send that to ${businessEmail} or call ${businessPhoneDisplay}. If you prefer to review the details first, everything is outlined here: ${pageUrl}.`,
+    "powerwash-trust":
+      `That's a great question, and I always like to be upfront about that. Most surfaces come out really well with a proper clean, but if there are tougher spots like oil, algae, or mortar, I'll let you know exactly what's realistic before anything starts. If you want, send me a couple photos at ${businessEmail} or call ${businessPhoneDisplay}, and I can give you a clear expectation. You can also review what's included here: ${pageUrl}.`,
+    "powerwash-delay":
+      `Perfect, that sounds good. Here are my details again for convenience: ${businessEmail} and ${businessPhoneDisplay}. You can send over a couple photos along with the address if you'd like, and I'll take a look and get back to you shortly. In the meantime, everything is outlined here: ${pageUrl}.`
+  };
+
+  return responses[intent] || responses["powerwash-inquiry"];
+}
+
 async function generateAssistantReply({ session, message, guidance }) {
   const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
   const leadSummary = buildLeadSummary(session);
@@ -560,25 +652,25 @@ function fallbackReply(guidance) {
   const map = {
     "project-type": "What are you looking to take care of: deck staining, power washing, or something else?",
     "core-context": "Got it. Has this not been done in a while, or are you mostly looking to freshen it up?",
-    "core-scope": "That helps. Roughly how big is the area we’re working with?",
+    "core-scope": "That helps. Roughly how big is the area we're working with?",
     "core-timeline": "Makes sense. When were you hoping to have this completed?",
     "core-budget": "One quick thing: are you leaning toward something simple and cost-effective, or a more thorough, long-lasting result?",
-    "broader-details": "Got it — I can definitely help point you in the right direction. Can you walk me through what you’re envisioning or what’s currently there?",
+    "broader-details": "Got it - I can definitely help point you in the right direction. Can you walk me through what you're envisioning or what's currently there?",
     "broader-surface-bridge": "That makes sense. Are there any surfaces involved like decks, fences, stone, or siding that might need cleaning or staining as part of the project?",
-    "broader-timeline": "Helpful to know. Is this something you’re planning to do soon, or are you just exploring options right now?",
+    "broader-timeline": "Helpful to know. Is this something you're planning to do soon, or are you just exploring options right now?",
     "email-consent": "Sounds like a great project. Want me to send you a quick summary of this along with next steps? We can also line you up for a proper estimate once we have the details.",
     "capture-name": "Perfect. What name should I put on the recap?",
-    "capture-email": "What’s the best email to send this to?",
-    "capture-phone": "If you’d like, you can also share a phone number for follow-up, or just say skip.",
-    "wrap-up": "Perfect — I’ll send you a quick recap along with next steps so you have everything in one place. You can also request your estimate here: https://www.mylandscapingproject.ca/free-estimate",
-    "pricing": "Pricing can vary quite a bit depending on the size, condition, prep work, and finish, so I wouldn’t want to guess. You can get a better sense here: https://www.mylandscapingproject.ca/pricing, and if you want, the next step is a free estimate: https://www.mylandscapingproject.ca/free-estimate",
-    "human": "Totally get it — sometimes it’s just easier to talk it through. Feel free to call Jason directly at tel:+16472727171, or request an estimate here: https://www.mylandscapingproject.ca/free-estimate"
+    "capture-email": "What's the best email to send this to?",
+    "capture-phone": "If you'd like, you can also share a phone number for follow-up, or just say skip.",
+    "wrap-up": "Perfect - I'll send you a quick recap along with next steps so you have everything in one place. You can also request your estimate here: https://www.mylandscapingproject.ca/free-estimate",
+    "pricing": "Pricing can vary quite a bit depending on the size, condition, prep work, and finish, so I wouldn't want to guess. You can get a better sense here: https://www.mylandscapingproject.ca/pricing, and if you want, the next step is a free estimate: https://www.mylandscapingproject.ca/free-estimate",
+    "human": `Sometimes it is simply easier to talk it through. Feel free to call Jason directly at ${businessPhoneHref}, or request an estimate here: https://www.mylandscapingproject.ca/free-estimate`
   };
 
   return {
     reply:
       map[guidance.type] ||
-      "Happy to help. Want to tell me a bit about the project, and I’ll point you to the best next step?"
+      "Happy to help. Want to tell me a bit about the project, and I'll point you to the best next step?"
   };
 }
 
@@ -631,13 +723,13 @@ async function sendLeadRecap(session) {
   await mailer.sendMail({
     from: process.env.SMTP_FROM,
     to: session.email,
-    subject: "Your Project Summary – My Landscaping Project",
+    subject: "Your Project Summary - My Landscaping Project",
     text: [
       `Hi ${summary.name || "there"},`,
       "",
       "Thanks for reaching out to My Landscaping Project.",
       "",
-      "Here’s a quick summary of what we discussed:",
+      "Here's a quick summary of what we discussed:",
       `Service: ${summary.serviceRequested || "Project inquiry"}`,
       `Project details: ${summary.projectDetails || "Not provided"}`,
       `Timeline: ${summary.timeline || "Not provided"}`,
@@ -645,7 +737,7 @@ async function sendLeadRecap(session) {
       "Next step:",
       "Request your free estimate here: https://www.mylandscapingproject.ca/free-estimate",
       "",
-      "If it’s easier to talk it through, you can also call Jason directly: +1 647-272-7171",
+      "If it's easier to talk it through, you can also call Jason directly: +1 647-272-7171",
       "",
       "Talk soon,",
       "My Landscaping Project"
