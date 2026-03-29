@@ -226,6 +226,25 @@
         bubble.innerHTML = linkify(message.text);
         bubbleWrap.appendChild(bubble);
 
+        if (Array.isArray(message.actions) && message.actions.length) {
+          const actionsWrap = document.createElement("div");
+          actionsWrap.className = "mlp-inline-actions";
+
+          message.actions.forEach((action) => {
+            const actionEl = document.createElement("a");
+            actionEl.className = "mlp-action";
+            actionEl.textContent = action.label;
+            actionEl.href = action.url;
+            if (action.type !== "call" && action.type !== "email") {
+              actionEl.target = "_blank";
+              actionEl.rel = "noopener noreferrer";
+            }
+            actionsWrap.appendChild(actionEl);
+          });
+
+          bubbleWrap.appendChild(actionsWrap);
+        }
+
         container.appendChild(bubbleWrap);
       });
 
@@ -428,6 +447,16 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
 
-    return escaped.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+    return escaped
+      .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
+      .replace(/\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/gi, '<a href="mailto:$1">$1</a>')
+      .replace(
+        /(?<!["/=\d])(\+?1[\s.-]?)?(?:\(?(\d{3})\)?[\s.-]?)(\d{3})[\s.-]?(\d{4})(?![^<]*>)/g,
+        (_match, country, area, prefix, line) => {
+          const digits = `${country ? "1" : ""}${area}${prefix}${line}`.replace(/\D/g, "");
+          const display = country ? `+1 (${area}) ${prefix}-${line}` : `(${area}) ${prefix}-${line}`;
+          return `<a href="tel:+${digits}">${display}</a>`;
+        }
+      );
   }
 })();
