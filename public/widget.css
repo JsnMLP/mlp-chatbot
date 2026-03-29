@@ -11,7 +11,7 @@
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 999999;
+  z-index: 2147483647;
   font-family: Verdana, Geneva, sans-serif;
   width: auto;
   left: auto;
@@ -95,7 +95,6 @@
 .mlp-back,
 .mlp-voice,
 .mlp-send,
-.mlp-chip,
 .mlp-mic,
 .mlp-recording-cancel,
 .mlp-recording-use {
@@ -159,39 +158,8 @@
   border-bottom-right-radius: 6px;
 }
 
-.mlp-bubble a,
-.mlp-action {
+.mlp-bubble a {
   color: inherit;
-}
-
-.mlp-inline-actions,
-.mlp-quick-replies {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mlp-inline-actions {
-  margin-top: 8px;
-}
-
-.mlp-action,
-.mlp-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 42px;
-  padding: 10px 14px;
-  background: rgb(255, 64, 0);
-  color: var(--mlp-green-dark);
-  text-decoration: none;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.mlp-quick-replies {
-  padding: 0 16px 12px;
-  flex-shrink: 0;
 }
 
 .mlp-form {
@@ -277,6 +245,10 @@
   justify-content: center;
   padding: 20px;
   padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+
+.mlp-recording-overlay[hidden] {
+  display: none !important;
 }
 
 .mlp-recording-card {
@@ -430,8 +402,6 @@
 
   .mlp-input,
   .mlp-send,
-  .mlp-chip,
-  .mlp-action,
   .mlp-mic {
     min-height: 48px;
   }
