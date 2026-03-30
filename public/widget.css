@@ -163,28 +163,27 @@
   color: inherit;
 }
 
-.mlp-inline-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.mlp-inline-actions {
-  margin-top: 8px;
-}
-
 .mlp-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 42px;
-  padding: 10px 14px;
-  background: rgb(255, 64, 0);
-  color: var(--mlp-green-dark);
+  min-height: 30px;
+  padding: 4px 10px;
+  margin: 0 4px 0 0;
+  vertical-align: middle;
+  background: #cc3300;
+  color: #fff;
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
   border-radius: 999px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.mlp-bubble .inline-btn:hover,
+.mlp-bubble .inline-btn:focus-visible {
+  background: #992600;
 }
 
 .mlp-form {
