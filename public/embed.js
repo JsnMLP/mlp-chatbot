@@ -198,7 +198,7 @@
         saveMeta();
 
         setTyping(messagesEl, false);
-        pushMessage("assistant", data.reply, data.actions || []);
+        pushMessage("assistant", data.reply, []);
         renderMessages(messagesEl);
 
         if (state.voiceEnabled) {
@@ -225,25 +225,6 @@
         bubble.className = "mlp-bubble";
         bubble.innerHTML = linkify(message.text);
         bubbleWrap.appendChild(bubble);
-
-        if (Array.isArray(message.actions) && message.actions.length) {
-          const actionsWrap = document.createElement("div");
-          actionsWrap.className = "mlp-inline-actions";
-
-          message.actions.forEach((action) => {
-            const actionEl = document.createElement("a");
-            actionEl.className = "mlp-action";
-            actionEl.textContent = action.label;
-            actionEl.href = action.url;
-            if (action.type !== "call" && action.type !== "email") {
-              actionEl.target = "_blank";
-              actionEl.rel = "noopener noreferrer";
-            }
-            actionsWrap.appendChild(actionEl);
-          });
-
-          bubbleWrap.appendChild(actionsWrap);
-        }
 
         container.appendChild(bubbleWrap);
       });
