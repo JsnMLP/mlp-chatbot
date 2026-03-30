@@ -198,7 +198,7 @@
         saveMeta();
 
         setTyping(messagesEl, false);
-        pushMessage("assistant", data.reply, []);
+        pushMessage("assistant", data.reply, data.actions || []);
         renderMessages(messagesEl);
 
         if (state.voiceEnabled) {
@@ -208,7 +208,11 @@
         setTyping(messagesEl, false);
         pushMessage(
           "assistant",
-          "I'm having a bit of trouble retrieving a response right now, but I can still help guide you. You can request an estimate here: https://www.mylandscapingproject.ca/free-estimate"
+          "I'm having a bit of trouble retrieving a response right now, but I can still help guide you.",
+          [
+            { type: "email", label: "Send Photos by Email", url: "mailto:info@mylandscapingproject.ca" },
+            { type: "sms", label: "Text (647) 272-7171", url: "sms:6472727171" }
+          ]
         );
         renderMessages(messagesEl);
       }
@@ -225,6 +229,27 @@
         bubble.className = "mlp-bubble";
         bubble.innerHTML = linkify(message.text);
         bubbleWrap.appendChild(bubble);
+
+        if (Array.isArray(message.actions) && message.actions.length) {
+          const actionsWrap = document.createElement("div");
+          actionsWrap.className = "mlp-inline-actions";
+
+          message.actions.forEach((action) => {
+            const actionEl = document.createElement("a");
+            actionEl.className = "mlp-action";
+            actionEl.textContent = action.label;
+            actionEl.href = action.url;
+
+            if (action.type !== "email" && action.type !== "sms") {
+              actionEl.target = "_blank";
+              actionEl.rel = "noopener noreferrer";
+            }
+
+            actionsWrap.appendChild(actionEl);
+          });
+
+          bubbleWrap.appendChild(actionsWrap);
+        }
 
         container.appendChild(bubbleWrap);
       });
@@ -342,8 +367,8 @@
 
   function pushMessage(role, text, actions) {
     state.messages.push({
-      role: role,
-      text: text,
+      role,
+      text,
       actions: actions || []
     });
     state.messages = state.messages.slice(-40);
@@ -429,15 +454,9 @@
       .replace(/>/g, "&gt;");
 
     return escaped
+      .replace(/\n\n/g, "<br><br>")
+      .replace(/\n/g, "<br>")
       .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
-      .replace(/\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/gi, '<a href="mailto:$1">$1</a>')
-      .replace(
-        /(?<!["/=\d])(\+?1[\s.-]?)?(?:\(?(\d{3})\)?[\s.-]?)(\d{3})[\s.-]?(\d{4})(?![^<]*>)/g,
-        (_match, country, area, prefix, line) => {
-          const digits = `${country ? "1" : ""}${area}${prefix}${line}`.replace(/\D/g, "");
-          const display = country ? `+1 (${area}) ${prefix}-${line}` : `(${area}) ${prefix}-${line}`;
-          return `<a href="tel:+${digits}">${display}</a>`;
-        }
-      );
+      .replace(/\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/gi, '<a href="mailto:$1">$1</a>');
   }
 })();
