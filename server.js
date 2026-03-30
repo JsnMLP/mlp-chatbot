@@ -18,6 +18,10 @@ const publicAppUrl = process.env.PUBLIC_APP_URL || `http://localhost:${port}`;
 const businessEmail = process.env.BUSINESS_EMAIL || "info@mylandscapingproject.ca";
 const businessPhoneDisplay = process.env.BUSINESS_PHONE_DISPLAY || "(647) 272-7171";
 const businessPhoneHref = process.env.BUSINESS_PHONE_HREF || "tel:+16472727171";
+const powerWashingPageUrl = "https://www.mylandscapingproject.ca/power-washing";
+const powerWashingRate = 0.5;
+const powerWashingMinimum = 150;
+const hstRate = 0.13;
 const dataDir = path.join(__dirname, "data");
 const sessions = new Map();
 
@@ -153,8 +157,8 @@ app.post("/api/chat", async (req, res) => {
     return res.json({
       sessionId,
       reply: aiReply.reply,
-      suggestions: guidance.suggestions,
-      actions: guidance.actions,
+      suggestions: [],
+      actions: [],
       lead: buildLeadSummary(session),
       state: {
         flowPath: session.flowPath,
@@ -254,10 +258,10 @@ function updateSessionFromMessage(session, message) {
   if (/\b(deck stain|deck staining|stain my deck|restore my deck|deck refinishing)\b/i.test(lower)) {
     session.serviceRequested = "Deck staining";
     session.flowPath = "core";
-  } else if (/\b(power wash|power washing|pressure wash|pressure washing|clean my deck|wash my deck)\b/i.test(lower)) {
+  } else if (/\b(power wash|power washing|pressure wash|pressure washing|clean my deck|wash my deck|driveway|patio|interlock)\b/i.test(lower)) {
     session.serviceRequested = "Power washing";
     session.flowPath = "core";
-  } else if (/\b(landscap|garden|construction|fence|patio|interlock|stone|siding|outdoor|backyard|yard)\b/i.test(lower)) {
+  } else if (/\b(landscap|garden|construction|fence|stone|siding|outdoor|backyard|yard)\b/i.test(lower)) {
     if (!session.serviceRequested) {
       session.serviceRequested = "Broader project inquiry";
     }
@@ -265,12 +269,12 @@ function updateSessionFromMessage(session, message) {
   }
 
   if (!session.projectContext && message.length > 18) {
-    if (/\b(freshen|hasn'?t been done|years|weathered|peeling|dirty|mold|grey|old stain|first time)\b/i.test(lower)) {
+    if (/\b(freshen|hasn'?t been done|years|weathered|peeling|dirty|mold|grey|old stain|first time|algae|slippery|stain)\b/i.test(lower)) {
       session.projectContext = message;
     }
   }
 
-  if (!session.projectScope && /\b(\d+\s*(sq|square|foot|feet|ft)|small|medium|large|two levels|single level|stairs|railings)\b/i.test(lower)) {
+  if (!session.projectScope && /\b(\d+\s*(sq|square|foot|feet|ft|sqft|sf)|small|medium|large|two levels|single level|stairs|railings)\b/i.test(lower)) {
     session.projectScope = message;
   }
 
@@ -282,7 +286,7 @@ function updateSessionFromMessage(session, message) {
     session.budgetFrame = message;
   }
 
-  if (!session.surfaces && /\b(deck|fence|stone|siding|patio)\b/i.test(lower)) {
+  if (!session.surfaces && /\b(deck|fence|stone|siding|patio|driveway|concrete|interlock)\b/i.test(lower)) {
     session.surfaces = message;
   }
 
@@ -290,7 +294,7 @@ function updateSessionFromMessage(session, message) {
     session.projectDetails = message;
   }
 
-  if (/\b(quote|estimate|book|consult|pricing|price|cost)\b/i.test(lower)) {
+  if (/\b(quote|estimate|book|consult|pricing|price|cost|how much)\b/i.test(lower)) {
     session.readyForEstimate = true;
   }
 
@@ -322,16 +326,10 @@ function buildGuidance(session, message) {
     questionToAsk: true
   };
 
-  if (/\bpricing|price|cost\b/i.test(lower)) {
+  if (/\bpricing|price|cost|how much\b/i.test(lower)) {
     guidance.type = "pricing";
     guidance.objective =
-      "Explain that pricing varies based on size, condition, prep work, and finish. Do not guess numbers. Point them to https://www.mylandscapingproject.ca/pricing and offer a proper estimate at https://www.mylandscapingproject.ca/free-estimate.";
-    guidance.directLink = "https://www.mylandscapingproject.ca/pricing";
-    guidance.suggestions = ["Get a quote", "Deck staining", "Power washing"];
-    guidance.actions = [
-      { type: "link", label: "View pricing", url: "https://www.mylandscapingproject.ca/pricing" },
-      { type: "link", label: "Free estimate", url: "https://www.mylandscapingproject.ca/free-estimate" }
-    ];
+      "Answer directly using the user's exact project details. If square footage is provided, calculate a rough estimate at $0.50/sq ft with a $150 minimum plus HST. Do not invent examples. Guide them to https://www.mylandscapingproject.ca/power-washing and offer photos for a more precise quote.";
     return guidance;
   }
 
@@ -339,47 +337,35 @@ function buildGuidance(session, message) {
     guidance.type = "human";
     guidance.questionToAsk = false;
     guidance.objective =
-      "Acknowledge that talking directly can be easier. Offer the clickable call action for Jason and the free estimate page. Keep it personal, concise, and reassuring.";
-    guidance.actions = [
-      { type: "call", label: "Call Jason", url: "tel:+16472727171" },
-      { type: "link", label: "Request an estimate", url: "https://www.mylandscapingproject.ca/free-estimate" }
-    ];
-    guidance.suggestions = ["Call Jason", "Get a quote"];
+      "Keep the tone professional and concise. Offer direct contact details without using buttons.";
     return guidance;
   }
 
   if ((session.readyForEstimate || meaningfulResponses >= 3) && !session.consentToEmail) {
     guidance.type = "email-consent";
     guidance.objective =
-      "Invite them to get a quick estimate and ask whether you can send a short recap with next steps. Mention that estimates depend on project details. Ask only one clear question.";
-    guidance.actions = [
-      { type: "link", label: "Free estimate", url: "https://www.mylandscapingproject.ca/free-estimate" }
-    ];
-    guidance.suggestions = ["Yes, send it", "Get a quote", "Call Jason"];
+      "Invite them to move forward naturally and ask one clear question only.";
     return guidance;
   }
 
   if (session.consentToEmail && !session.name) {
     guidance.type = "capture-name";
     guidance.objective =
-      "Thank them and ask for their name so you can prepare the recap and estimate handoff. One short question only.";
-    guidance.suggestions = [];
+      "Ask for their name in one short question only.";
     return guidance;
   }
 
   if (session.consentToEmail && !session.email) {
     guidance.type = "capture-email";
     guidance.objective =
-      "Ask for the best email address to send their recap and next steps to. One short question only.";
-    guidance.suggestions = [];
+      "Ask for the best email address in one short question only.";
     return guidance;
   }
 
   if (session.consentToEmail && session.email && !session.phone && !session.phoneCaptureComplete) {
     guidance.type = "capture-phone";
     guidance.objective =
-      "Ask for a phone number as optional. Make it easy to skip. One short question only.";
-    guidance.suggestions = ["Skip for now"];
+      "Ask for a phone number as optional. Keep it easy to skip.";
     return guidance;
   }
 
@@ -387,26 +373,20 @@ function buildGuidance(session, message) {
     guidance.type = "wrap-up";
     guidance.questionToAsk = false;
     guidance.objective =
-      "Confirm that you will send a recap and next steps by email, then guide them to the free estimate page and offer the Call Jason option. Do not promise availability or pricing.";
-    guidance.actions = [
-      { type: "link", label: "Free estimate", url: "https://www.mylandscapingproject.ca/free-estimate" },
-      { type: "call", label: "Call Jason", url: "tel:+16472727171" }
-    ];
-    guidance.suggestions = ["Free estimate", "Call Jason"];
+      "Confirm next steps briefly without repeating details already covered.";
     return guidance;
   }
 
   if (session.hesitant) {
     guidance.type = "hesitant";
     guidance.objective =
-      "Reassure them there is no pressure, offer a rough idea of what to expect, and keep the door open. Then ask the next most helpful qualifying question.";
+      "Reassure them briefly and ask the next most useful question.";
   }
 
   if (!session.serviceRequested) {
     guidance.type = "project-type";
     guidance.objective =
-      "Ask what they are looking to take care of: deck staining, power washing, or something else. Friendly, relaxed, one question only.";
-    guidance.suggestions = ["Deck staining", "Power washing", "Something else"];
+      "Ask what they are looking to take care of: deck staining, power washing, or something else. One question only.";
     return guidance;
   }
 
@@ -414,32 +394,28 @@ function buildGuidance(session, message) {
     if (!session.projectContext) {
       guidance.type = "core-context";
       guidance.objective =
-        "Acknowledge the service request and ask whether it has not been done in a while or if they are mostly looking to freshen it up. One question only.";
-      guidance.suggestions = ["Hasn't been done in a while", "Just freshen it up"];
+        "Acknowledge the service request and ask one useful follow-up question.";
       return guidance;
     }
 
     if (!session.projectScope) {
       guidance.type = "core-scope";
       guidance.objective =
-        "Acknowledge their context and ask roughly how big the area is. One question only.";
-      guidance.suggestions = ["Small area", "Medium area", "Large area"];
+        "Ask roughly how large the area is. One question only.";
       return guidance;
     }
 
     if (!session.timeline) {
       guidance.type = "core-timeline";
       guidance.objective =
-        "Acknowledge the scope and ask when they were hoping to have it completed. One question only.";
-      guidance.suggestions = ["ASAP", "Next few weeks", "Just exploring"];
+        "Ask when they were hoping to have it completed. One question only.";
       return guidance;
     }
 
     if (!session.budgetFrame && enoughEngagement && !session.readyForEstimate) {
       guidance.type = "core-budget";
       guidance.objective =
-        "Ask naturally whether they want something simple and cost-effective or a more thorough, long-lasting result. One question only.";
-      guidance.suggestions = ["Simple and cost-effective", "Thorough and long-lasting"];
+        "Ask whether they want something simple and cost-effective or a more thorough result. One question only.";
       return guidance;
     }
   }
@@ -448,24 +424,21 @@ function buildGuidance(session, message) {
     if (!session.projectDetails) {
       guidance.type = "broader-details";
       guidance.objective =
-        "Reassure them and ask what they are looking to get done, or what they are envisioning and what is currently there. One question only.";
-      guidance.suggestions = ["Backyard project", "Garden work", "Something else"];
+        "Ask what they are looking to get done. One question only.";
       return guidance;
     }
 
     if (!session.surfaces) {
       guidance.type = "broader-surface-bridge";
       guidance.objective =
-        "Ask whether there are any surfaces involved like decks, fences, stone, or siding that might need cleaning or staining as part of the project. One question only.";
-      guidance.suggestions = ["Deck", "Fence", "Stone", "No surfaces"];
+        "Ask whether decks, fences, stone, siding, patios, or driveways are involved. One question only.";
       return guidance;
     }
 
     if (!session.timeline) {
       guidance.type = "broader-timeline";
       guidance.objective =
-        "Ask whether they are planning to do this soon or just exploring options right now. One question only.";
-      guidance.suggestions = ["Soon", "Just exploring"];
+        "Ask whether this is happening soon or they are just exploring. One question only.";
       return guidance;
     }
   }
@@ -473,33 +446,7 @@ function buildGuidance(session, message) {
   guidance.type = "general-next-step";
   guidance.questionToAsk = false;
   guidance.objective =
-    "Guide them toward the next logical step with a quick estimate option and the service page that fits best. Keep it concise and helpful.";
-  guidance.actions = [
-    { type: "link", label: "Free estimate", url: "https://www.mylandscapingproject.ca/free-estimate" }
-  ];
-  guidance.suggestions = ["Get a quote", "Call Jason"];
-
-  if (session.serviceRequested === "Deck staining") {
-    guidance.directLink = "https://www.mylandscapingproject.ca/deck-staining";
-    guidance.actions.unshift({
-      type: "link",
-      label: "Deck staining page",
-      url: "https://www.mylandscapingproject.ca/deck-staining"
-    });
-  } else if (session.serviceRequested === "Power washing") {
-    guidance.directLink = "https://www.mylandscapingproject.ca/power-washing";
-    guidance.actions.unshift({
-      type: "link",
-      label: "Power washing page",
-      url: "https://www.mylandscapingproject.ca/power-washing"
-    });
-  } else {
-    guidance.actions.push({
-      type: "call",
-      label: "Call Jason",
-      url: "tel:+16472727171"
-    });
-  }
+    "Guide them to the next logical step in a concise, professional way.";
 
   return guidance;
 }
@@ -511,7 +458,7 @@ function buildScriptedReply({ session, message, guidance }) {
   }
 
   return {
-    reply: buildPowerWashingReply(powerWashIntent),
+    reply: buildPowerWashingReply(powerWashIntent, message),
     actions: []
   };
 }
@@ -520,9 +467,14 @@ function detectPowerWashingIntent(message, session, guidance) {
   const lower = message.toLowerCase();
   const hasPowerWashKeywords = /\b(power wash|power washing|pressure wash|pressure washing|driveway|patio|interlock|concrete|algae|surface dirt)\b/i.test(lower);
   const serviceHint = session.serviceRequested === "Power washing" || hasPowerWashKeywords;
+  const squareFootage = extractSquareFootage(message);
 
   if (!serviceHint) {
     return null;
+  }
+
+  if (squareFootage) {
+    return "powerwash-pricing";
   }
 
   if (/\b(seal|sealing|sealed)\b/i.test(lower)) {
@@ -548,7 +500,7 @@ function detectPowerWashingIntent(message, session, guidance) {
     return "powerwash-objection";
   }
 
-  if (/\b(price|pricing|cost|how much|quote|rate|per square foot|sq ft|square foot|2-car|two car)\b/i.test(lower)) {
+  if (/\b(price|pricing|cost|how much|quote|rate|per square foot|sq ft|square foot)\b/i.test(lower)) {
     return "powerwash-pricing";
   }
 
@@ -563,29 +515,66 @@ function detectPowerWashingIntent(message, session, guidance) {
   return guidance.type === "pricing" ? "powerwash-pricing" : "powerwash-inquiry";
 }
 
-function buildPowerWashingReply(intent) {
-  const pageUrl = "https://www.mylandscapingproject.ca/power-washing";
+function buildPowerWashingReply(intent, message = "") {
+  const squareFootage = extractSquareFootage(message);
+  const concern = summarizePowerWashingConcern(message);
+
+  if (intent === "powerwash-pricing" && squareFootage) {
+    const basePrice = Math.max(squareFootage * powerWashingRate, powerWashingMinimum);
+    const totalWithHst = basePrice * (1 + hstRate);
+    return `Based on the ${squareFootage} sq ft you mentioned, the rough price is ${formatCurrency(basePrice)} plus HST, or about ${formatCurrency(totalWithHst)} total. Final pricing can shift a bit depending on buildup and access. Service details: ${powerWashingPageUrl} If you'd like a more precise quote, send a couple of photos to ${businessEmail} or call ${businessPhoneDisplay}.`;
+  }
 
   const responses = {
-    "powerwash-inquiry":
-      "That's a great question, and yes, in most cases it is absolutely worth it. Over time, driveways and patios collect dirt, algae, and grime that can make the surface look tired, become slippery, and wear down faster. A proper power wash can refresh the whole space surprisingly quickly. What's prompting you to look into it right now?",
-    "powerwash-pricing":
-      `Nice, that's usually exactly when people reach out. For something like a 2-car driveway and a small patio, most projects tend to land somewhere in the $300-$700+ range, depending on the size, material, and overall condition. I price it more precisely at $0.50 per square foot with a $150 minimum so it stays fair and consistent. You can see the package options here: ${pageUrl}. Are you mostly dealing with surface dirt, or is there any darker buildup like algae or staining?`,
-    "powerwash-objection":
-      `That's fair, and there are definitely lower-priced options out there. What I focus on is doing the cleaning properly so the surface is actually cleaned without damage and stays cleaner longer. A lot of the lower-priced work tends to be more of a quick rinse than a proper treatment. You can see exactly what's included here: ${pageUrl}.`,
-    "powerwash-sealing":
-      `That's a great question. I focus specifically on doing the cleaning properly, which is where most of the real impact comes from. A thorough power wash usually brings the surface back to life on its own, and in many cases sealing is not even necessary right away. If your main goal is to get everything looking clean and refreshed again, you can see how I handle that here: ${pageUrl}.`,
-    "powerwash-sealing-repeat":
-      `That's fair, and sealing can definitely have its place. That said, the most important step is getting the surface properly cleaned first because sealing will not perform the way it should without that step. In many cases, once everything is cleaned up, it already looks the way most homeowners were hoping for. If you'd like, you can take a look at how I handle the cleaning side here: ${pageUrl}.`,
-    "powerwash-booking":
-      `Great question. Most of the time I can quote it without needing to come out. If you send over a couple photos of the driveway or patio and the address if you'd like, I can measure everything and send back a clear price. You can send that to ${businessEmail} or call ${businessPhoneDisplay}. If you prefer to review the details first, everything is outlined here: ${pageUrl}.`,
-    "powerwash-trust":
-      `That's a great question, and I always like to be upfront about that. Most surfaces come out really well with a proper clean, but if there are tougher spots like oil, algae, or mortar, I'll let you know exactly what's realistic before anything starts. If you want, send me a couple photos at ${businessEmail} or call ${businessPhoneDisplay}, and I can give you a clear expectation. You can also review what's included here: ${pageUrl}.`,
-    "powerwash-delay":
-      `Perfect, that sounds good. Here are my details again for convenience: ${businessEmail} and ${businessPhoneDisplay}. You can send over a couple photos along with the address if you'd like, and I'll take a look and get back to you shortly. In the meantime, everything is outlined here: ${pageUrl}.`
+    "powerwash-inquiry": `Power washing is usually worthwhile when the main concern is ${concern}. It improves appearance, helps with slippery buildup, and protects the surface when it is cleaned properly. Service details: ${powerWashingPageUrl} What area are you looking to have cleaned?`,
+    "powerwash-pricing": `I can give you a rough estimate once I know the approximate square footage. Pricing is ${formatCurrency(powerWashingRate)}/sq ft with a ${formatCurrency(powerWashingMinimum)} minimum, plus HST. Service details: ${powerWashingPageUrl} If you prefer, send a couple of photos to ${businessEmail} for a more precise quote.`,
+    "powerwash-objection": `Lower prices are out there, but the real difference is whether the surface is cleaned properly without damage. My pricing is ${formatCurrency(powerWashingRate)}/sq ft with a ${formatCurrency(powerWashingMinimum)} minimum, plus HST, and the focus is a proper result rather than a quick rinse. Service details: ${powerWashingPageUrl} If you'd like a more precise quote, send a couple of photos to ${businessEmail}.`,
+    "powerwash-sealing": `My focus is on cleaning the surface properly first, because that is where most of the visible improvement comes from. In many cases, once the surface is fully cleaned, sealing is not necessary right away. Service details: ${powerWashingPageUrl} If you'd like, send a couple of photos to ${businessEmail} and I can advise based on the condition.`,
+    "powerwash-sealing-repeat": `Sealing can have its place, but the first priority is getting the surface properly cleaned. Without that step, sealing will not perform the way it should. Service details: ${powerWashingPageUrl} If you'd like a more precise recommendation, send a couple of photos to ${businessEmail}.`,
+    "powerwash-booking": `Most projects can be quoted without a site visit. Service details: ${powerWashingPageUrl} If you'd like a more precise quote, send a couple of photos and the address to ${businessEmail} or call ${businessPhoneDisplay}.`,
+    "powerwash-trust": `I like to be clear about expectations before anything starts. Most surfaces respond very well to a proper cleaning, but heavier spots like oil, algae, or mortar need to be assessed honestly. Service details: ${powerWashingPageUrl} If you'd like a more precise quote, send a couple of photos to ${businessEmail} or call ${businessPhoneDisplay}.`,
+    "powerwash-delay": `That works. Service details: ${powerWashingPageUrl} When you're ready, send a couple of photos to ${businessEmail} or call ${businessPhoneDisplay} and I can give you a more precise quote.`
   };
 
   return responses[intent] || responses["powerwash-inquiry"];
+}
+
+function extractSquareFootage(message) {
+  const match = message.match(/(\d+(?:[.,]\d+)?)\s*(?:sq\.?\s*ft|sqft|square\s*feet|square\s*foot|sf)\b/i);
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[1].replace(",", ""));
+}
+
+function summarizePowerWashingConcern(message) {
+  const lower = message.toLowerCase();
+  if (/\balgae\b/.test(lower)) {
+    return "algae buildup";
+  }
+  if (/\bstain|staining\b/.test(lower)) {
+    return "staining";
+  }
+  if (/\bslipp|slippery\b/.test(lower)) {
+    return "slippery buildup";
+  }
+  if (/\bpatio\b/.test(lower)) {
+    return "a patio that needs cleaning";
+  }
+  if (/\bdriveway\b/.test(lower)) {
+    return "a driveway that needs cleaning";
+  }
+  return "dirt and buildup on the surface";
+}
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency: "CAD",
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2
+  }).format(value);
 }
 
 async function generateAssistantReply({ session, message, guidance }) {
@@ -602,24 +591,19 @@ Business focus:
 - Always look for opportunities to help with deck staining, power washing, prep, cleaning, or finishing
 
 Tone:
-- Professional, friendly, slightly playful
-- Reassuring, capable, concise
-- Never overwhelming
+- Professional, confident, concise
+- Never casual, robotic, or repetitive
 
 Critical rules:
+- Always anchor the reply to the user's exact input
+- Never introduce hypothetical examples unless the user asks for them
+- If the user gives square footage for power washing, calculate a rough estimate at $0.50/sq ft with a $150 minimum plus HST
 - Ask one question at a time
-- Acknowledge answers before moving on
-- Always guide toward the next logical step
-- Do not guess pricing
-- Do not promise timelines or availability
-- Clarify that estimates depend on project details
-- If pricing comes up, say it varies and link to https://www.mylandscapingproject.ca/pricing
-- If deck staining is relevant, you may direct to https://www.mylandscapingproject.ca/deck-staining
-- If power washing is relevant, you may direct to https://www.mylandscapingproject.ca/power-washing
-- If estimate/booking is relevant, you may direct to https://www.mylandscapingproject.ca/free-estimate
-- If human fallback is relevant, mention they can call Jason directly at tel:+16472727171
-- If the user is broader-service only and you cannot directly help, stay helpful and mention trusted partner support only after understanding the scope
+- Do not repeat information already given
+- Do not guess timelines or availability
 - Keep replies to 2-4 short sentences max
+- Do not produce buttons, quick replies, or CTA labels
+- For power washing, direct to https://www.mylandscapingproject.ca/power-washing and optionally invite photos for a more precise quote
 
 Session summary:
 ${JSON.stringify(leadSummary, null, 2)}
@@ -632,9 +616,6 @@ ${message}
 
 Current objective:
 ${guidance.objective}
-
-Available quick replies:
-${guidance.suggestions.join(", ") || "none"}
 
 Respond with only the assistant message text.`;
 
@@ -654,23 +635,23 @@ function fallbackReply(guidance) {
     "core-context": "Got it. Has this not been done in a while, or are you mostly looking to freshen it up?",
     "core-scope": "That helps. Roughly how big is the area we're working with?",
     "core-timeline": "Makes sense. When were you hoping to have this completed?",
-    "core-budget": "One quick thing: are you leaning toward something simple and cost-effective, or a more thorough, long-lasting result?",
-    "broader-details": "Got it - I can definitely help point you in the right direction. Can you walk me through what you're envisioning or what's currently there?",
-    "broader-surface-bridge": "That makes sense. Are there any surfaces involved like decks, fences, stone, or siding that might need cleaning or staining as part of the project?",
-    "broader-timeline": "Helpful to know. Is this something you're planning to do soon, or are you just exploring options right now?",
-    "email-consent": "Sounds like a great project. Want me to send you a quick summary of this along with next steps? We can also line you up for a proper estimate once we have the details.",
-    "capture-name": "Perfect. What name should I put on the recap?",
+    "core-budget": "Would you prefer something simple and cost-effective, or a more thorough result?",
+    "broader-details": "Can you walk me through what you're looking to get done?",
+    "broader-surface-bridge": "Are there any surfaces involved like decks, fences, stone, siding, patios, or driveways that may need cleaning or staining?",
+    "broader-timeline": "Is this something you're planning to do soon, or are you just exploring options right now?",
+    "email-consent": "Would you like me to send a short recap with next steps?",
+    "capture-name": "What name should I put on the recap?",
     "capture-email": "What's the best email to send this to?",
     "capture-phone": "If you'd like, you can also share a phone number for follow-up, or just say skip.",
-    "wrap-up": "Perfect - I'll send you a quick recap along with next steps so you have everything in one place. You can also request your estimate here: https://www.mylandscapingproject.ca/free-estimate",
-    "pricing": "Pricing can vary quite a bit depending on the size, condition, prep work, and finish, so I wouldn't want to guess. You can get a better sense here: https://www.mylandscapingproject.ca/pricing, and if you want, the next step is a free estimate: https://www.mylandscapingproject.ca/free-estimate",
-    "human": `Sometimes it is simply easier to talk it through. Feel free to call Jason directly at ${businessPhoneHref}, or request an estimate here: https://www.mylandscapingproject.ca/free-estimate`
+    "wrap-up": "I'll send a quick recap with next steps shortly.",
+    "pricing": "Pricing depends on the size, condition, and scope of the work. If you'd like, tell me the approximate square footage and I can give you a rough starting point.",
+    "human": `If you'd prefer to talk it through directly, you can call Jason at ${businessPhoneHref}.`
   };
 
   return {
     reply:
       map[guidance.type] ||
-      "Happy to help. Want to tell me a bit about the project, and I'll point you to the best next step?"
+      "Happy to help. Tell me a bit about the project and I'll guide you to the right next step."
   };
 }
 
