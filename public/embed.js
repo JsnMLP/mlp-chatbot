@@ -208,7 +208,7 @@
         setTyping(messagesEl, false);
         pushMessage(
           "assistant",
-          "I'm having a bit of trouble retrieving a response right now, but I can still help guide you.",
+          "I'm having a bit of trouble retrieving a response right now, but I can still help guide you.\n\nIf you'd like to keep things moving, you can [action:Send Photos by Email] or [action:Text (647) 272-7171].",
           [
             { type: "email", label: "Send Photos by Email", url: "mailto:info@mylandscapingproject.ca" },
             { type: "sms", label: "Text (647) 272-7171", url: "sms:6472727171" }
@@ -227,29 +227,8 @@
 
         const bubble = document.createElement("div");
         bubble.className = "mlp-bubble";
-        bubble.innerHTML = linkify(message.text);
+        bubble.innerHTML = renderBubbleContent(message.text, message.actions || []);
         bubbleWrap.appendChild(bubble);
-
-        if (Array.isArray(message.actions) && message.actions.length) {
-          const actionsWrap = document.createElement("div");
-          actionsWrap.className = "mlp-inline-actions";
-
-          message.actions.forEach((action) => {
-            const actionEl = document.createElement("a");
-            actionEl.className = "mlp-action";
-            actionEl.textContent = action.label;
-            actionEl.href = action.url;
-
-            if (action.type !== "email" && action.type !== "sms") {
-              actionEl.target = "_blank";
-              actionEl.rel = "noopener noreferrer";
-            }
-
-            actionsWrap.appendChild(actionEl);
-          });
-
-          bubbleWrap.appendChild(actionsWrap);
-        }
 
         container.appendChild(bubbleWrap);
       });
@@ -367,8 +346,8 @@
 
   function pushMessage(role, text, actions) {
     state.messages.push({
-      role,
-      text,
+      role: role,
+      text: text,
       actions: actions || []
     });
     state.messages = state.messages.slice(-40);
@@ -458,5 +437,43 @@
       .replace(/\n/g, "<br>")
       .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>')
       .replace(/\b([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})\b/gi, '<a href="mailto:$1">$1</a>');
+  }
+
+  function renderBubbleContent(text, actions) {
+    let html = linkify(text);
+
+    actions.forEach((action) => {
+      const token = `[action:${escapeActionLabel(action.label)}]`;
+      html = html.split(token).join(buildInlineAction(action));
+    });
+
+    return html;
+  }
+
+  function buildInlineAction(action) {
+    const targetAttrs =
+      action.type !== "email" && action.type !== "sms"
+        ? ' target="_blank" rel="noopener noreferrer"'
+        : "";
+
+    return `<a class="mlp-action inline-btn" href="${escapeAttribute(action.url)}"${targetAttrs}>${escapeHtml(action.label)}</a>`;
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function escapeAttribute(value) {
+    return escapeHtml(value).replace(/"/g, "&quot;");
+  }
+
+  function escapeActionLabel(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 })();
